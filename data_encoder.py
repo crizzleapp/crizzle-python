@@ -118,6 +118,52 @@ def one_hot_decode(one_hot_data=None):
     if one_hot_data is None:
         one_hot_data = self.data['one_hot']
     return np.argmax(one_hot_data, axis=int(len(one_hot_data.shape) != 1))
+def save_data(obj_name):
+    """
+    pirkcle and save object data at <working_dir>\<data_filename>\objname
+    Args:
+        obj_name (object): object to be saved
+    Returns (str):
+        full path to saved file
+    """
+    global data
+    # get working directory
+    dir = sys.path[0]
+    subfolder = os.path.join(data['filename'].split('.')[0] + '_data', 'pickled_data')
+    save_folder = os.path.join(dir, subfolder)
+    save_file = os.path.join(save_folder, obj_name)
+
+    try:
+        os.makedirs(save_folder)
+    except:
+        pass
+
+    with open(save_file, 'wb') as f:
+        pickle.dump(data[obj_name], f)
+
+    return save_file
+
+
+def load_data(filename):
+    """
+    Args:
+        filename (str): name of key to store loaded data in
+    Returns (object):
+        object from loaded data
+    """
+    global data
+    dir = sys.path[0]
+    subfolder = os.path.join(data['filename'].split('.')[0] + '_data', 'pickled_data')
+    save_folder = os.path.join(dir, subfolder)
+    save_file = os.path.join(save_folder, filename)
+
+    try:
+        with open(save_file, 'rb') as f:
+            _update_data({filename: pickle.load(f)})
+    except Exception as e:
+        logging.error("Unable to open file at {}".format(save_file))
+        logging.info(traceback.format_exc())
+    return data[filename]
 
 
 def batch(batch_size):
