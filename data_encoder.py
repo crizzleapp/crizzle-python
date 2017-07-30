@@ -194,20 +194,30 @@ def batch(batch_size):
         pass
 
 
-def main(filename=None, vocab_fraction=1, is_string=False):
+def main(filename=None, vocab_fraction=1):
     """
     Args:
         filename (str): If not provided, read() method must be called explicitly to add data
     """
     global data
     if filename is not None:
-        read(filename, vocab_fraction, is_string)  # read raw data from file
-        one_hot_encode(data['indices'], data['vocab_size'])
+        read(filename=filename, vocab_fraction=vocab_fraction)  # read raw data from file
+        one_hot_encode_tokens(data['tokens'], data['vocab_size'])
+        return filename
+
+    # TODO: condition: filename == None -- what then?
 
 
 if __name__ == '__main__':
-    # dh = DataHandler('data.txt')
-    # print(np.argmax(dh.one_hot_encode(), axis=1))
-    main('data.txt', vocab_fraction=0.95)
-    # print(data['sentences'])
-    # print(data['tokens'])
+    data_to_save = ['index_to_token',
+                    'token_to_index',
+                    'index_to_one_hot',
+                    'sentences',
+                    'indices',
+                    'unique_tokens']
+
+    main('1984.txt', vocab_fraction=0.95)
+    for obj_name in data_to_save:
+        save_data(obj_name)
+
+    print('All done')
