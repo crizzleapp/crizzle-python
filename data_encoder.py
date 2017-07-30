@@ -95,35 +95,50 @@ def update_data(properties):
     return properties
 
 
-def tokens_to_indices(tokenized_sentences, unique_tokens):
+def tokens_to_indices(tokens, unique_tokens):
     # mapping from tokens to indices
-    word_to_index = {w: i for i, w in enumerate(unique_tokens)}
+    token_to_index = {w: i for i, w in enumerate(unique_tokens)}
+    index_to_token = {i: w for i, w in enumerate(unique_tokens)}
     # replace all invalid tokens with UNKOWN_TOKEN
-    for i, sent in enumerate(tokenized_sentences):
-        tokenized_sentences[i] = [w if w in unique_tokens[:-1] else UNKNOWN_TOKEN for w in sent]
-    indices = [[word_to_index[word] for word in sent] for sent in tokenized_sentences]
-    update_data({'indices': indices})
+    for i, sent in enumerate(tokens):
+        tokens[i] = [w if w in unique_tokens[:-1] else UNKNOWN_TOKEN for w in sent]
+    indices = [[token_to_index[word] for word in sent] for sent in tokens]
+    data_update = {'indices': indices,
+                   'token_to_index': token_to_index,
+                   'index_to_token': index_to_token}
+    _update_data(data_update)
     return indices
 
-def one_hot_encode(indices, vocab_size):
+
+def one_hot_encode_indices(indices, vocab_size):
     """
     Encode given data (or default data) as one-hot numpyvectors
-    :param tokens: String. If None, uses raw_data from self.data
+    :param indices: String. If None, uses raw_data from self.data
     :return: one-hot encoded numpy array
     """
     global data
+    index_to_one_hot = dict((index, enc) for index, enc in zip(range(vocab_size), np.eye(vocab_size, dtype=bool)))
+    one_hot = [[index_to_one_hot[index] for index in sentence] for sentence in indices]
+    max_sentece_length = max([len(sentence) for sentence in indices])
+    data_update = {'index_to_one_hot': index_to_one_hot,
+                   'one_hot': one_hot,
+                   'max_sentence_length': max_sentece_length}
+    _update_data(data_update)
+    return one_hot
 
-    if data['sentence_tokenized']:
-        # TODO: make usable with sentence-tokenized inputs
-        pass
-    else:
-        char_to_ix = {ch: i for i, ch in enumerate(unique_tokens)}
-        indices = np.array([char_to_ix[char] for char in tokens]).astype(int)
-        one_hot = np.eye(vocab_size)[indices].astype(bool)
 
+def one_hot_encode_tokens(tokens, vocab_size):
+    """
+    Encode given data (or default data) as one-hot nested list
+    :param tokens (list): nested list of word-tokenized sentences
+    :return (list): one-hot encoded list
+    """
+    global data
+    indices = tokens_to_indices(data['tokens'], data['unique_tokens'])
+    one_hot = one_hot_encode_indices(indices, vocab_size)
     data_update = {'indices': indices,
                    'one_hot': one_hot}
-    update_data(data_update)
+    _update_data(data_update)
     return one_hot
 
 
