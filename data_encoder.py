@@ -1,9 +1,17 @@
 import numpy as np
-import itertools
+from itertools import chain, islice, repeat
+import traceback
+import logging
+import pickle
 import nltk
+import sys
+import os
+
+logging_level = logging.INFO
+logging.basicConfig(level=logging_level)
+
 
 UNKNOWN_TOKEN = 'UNKNOWN_TOKEN'
-
 data = {}
 """
 data can contain the following keys:
@@ -23,11 +31,12 @@ tokens_flat: flattened sequence of word tokens
 token_to_one_hot: map from tokens to one-hot space
 index_to_one_hot: map from indices to one-hot space
 """
+
 current_epoch = 0
 position_in_batch = 0
 
 
-def read(filename, vocab_fraction=0, sentence_tokenized=False, is_string=False):
+def read(filename, vocab_fraction=0, sentence_tokenized=False):
     """
     Read raw data and add data properties to self.data
 
@@ -44,9 +53,6 @@ def read(filename, vocab_fraction=0, sentence_tokenized=False, is_string=False):
     global data
 
     # load raw data
-    if is_string:
-        raw_data = filename
-    else:
         raw_data = open(filename, 'r').read()
 
     # sentence tokenize data
@@ -56,7 +62,7 @@ def read(filename, vocab_fraction=0, sentence_tokenized=False, is_string=False):
     # word-tokenize each sentence
     tokenized_sentences = [nltk.word_tokenize(sentence) for sentence in sentences]
     # flatten list of tokens
-    tokens = list(itertools.chain(*tokenized_sentences))
+    tokens = list(chain(*tokenized_sentences))
     # get data and full vocab size
     data_size, vocab_size = len(tokens), len(set(tokens))
 
@@ -72,20 +78,19 @@ def read(filename, vocab_fraction=0, sentence_tokenized=False, is_string=False):
     unique_tokens.insert(0, UNKNOWN_TOKEN)
     # get final vocab size
     vocab_size = len(unique_tokens)
-    indices = tokens_to_indices(tokenized_sentences, unique_tokens)
     data_update = {'filename': filename,
                    'raw_data': raw_data,
                    'sentences': sentences,
-                   'tokens': tokens,
+                   'tokens': tokenized_sentences,
                    'tokens_flat': tokens,
                    'unique_tokens': unique_tokens,
                    'data_size': data_size,
                    'vocab_size': vocab_size}
-    update_data(data_update)
+    _update_data(data_update)
     return data_update
 
 
-def update_data(properties):
+def _update_data(properties):
     """
     :param kwargs: Dict containing properties to add to data
     :return: None
