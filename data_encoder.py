@@ -5,6 +5,24 @@ import nltk
 UNKNOWN_TOKEN = 'UNKNOWN_TOKEN'
 
 data = {}
+"""
+data can contain the following keys:
+sentences: list of sentence strings
+tokens: word-tokenized list of sentences
+unique_tokens: list of unique tokens sorted by frequency
+indices: integer representation of tokens
+one_hot: one-hot representation of indices
+vocab_size: number of unique tokens
+token_to_index: map from token to index space
+index_to_token: map from index to token space
+max_sentence_length: number of tokens in the longest sentence
+raw_data: full text
+data_size: number of tokens in data
+filename: name of file to read raw data from
+tokens_flat: flattened sequence of word tokens
+token_to_one_hot: map from tokens to one-hot space
+index_to_one_hot: map from indices to one-hot space
+"""
 current_epoch = 0
 position_in_batch = 0
 
