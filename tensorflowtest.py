@@ -108,7 +108,6 @@ with graph.as_default():
 
         return output, state
 
-
     # OPERATIONS
     # LSTM
     output = tf.zeros([batch_size, hidden_layer_size])
@@ -130,9 +129,8 @@ with graph.as_default():
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels_all_i))
     optimizer = tf.train.GradientDescentOptimizer(10.).minimize(loss, global_step=global_step)
 
-
 with tf.Session(graph=graph) as sess:
-    tf.global_variables_initializer()
+    tf.global_variables_initializer().run()
     offset = 0
     saver = tf.train.Saver()
     for step in range(max_steps):
@@ -155,6 +153,7 @@ with tf.Session(graph=graph) as sess:
                                                                                training_loss))
         if step % save_every == 0:
             saver.save(sess, ckpt_dir + '\\model', global_step=step)
+
 
 def sample(prediction):
     rand_prob = random.uniform(0, 1)
