@@ -16,8 +16,8 @@ tf.logging.set_verbosity(tf_logging_level)
 log_every = 100
 num_epochs = 100
 batch_size = 512
-save_every = 10000
-max_steps = 100000
+save_every = 500
+max_steps = 2001
 learning_rate = 1e-1
 hidden_layer_size = 1024
 
@@ -67,13 +67,27 @@ tf.gfile.MakeDirs(ckpt_dir)
 logging.info('New checkpoint directory created')
 
 
+def sample(prediction):
+    rand_prob = random.uniform(0, 1)
+    cumulative_prob = 0
+    char_idx = len(prediction) - 1
+    for idx in range(len(prediction)):
+        cumulative_prob += prediction[idx]
+        if cumulative_prob >= rand_prob:
+            char_idx = idx
+            break
+
+    char_one_hot = np.eye(vocab_size)[char_idx]
+    return char_one_hot
+
+
 # CREATE GRAPH
 graph = tf.Graph()
 with graph.as_default():
     global_step = tf.Variable(0)
     with tf.name_scope('input_data'):
-        data = tf.placeholder(tf.float32, [batch_size, len_per_section, vocab_size])
-        labels = tf.placeholder(tf.float32, [batch_size, vocab_size])
+        data = tf.placeholder(tf.float32, [batch_size, len_per_section, vocab_size], name='data_feed')
+        labels = tf.placeholder(tf.float32, [batch_size, vocab_size], name='label_feed')
 
     with tf.name_scope('input'):
         # Input gate: weights for input, weights for previous input, bias
@@ -98,41 +112,56 @@ with graph.as_default():
 
 
     def lstm(i, o, state):
-        with tf.name_scope('lstm'):
-            input_gate = tf.sigmoid(tf.matmul(i, w_ii) + tf.matmul(o, w_io) + b_i)
-            forget_gate = tf.sigmoid(tf.matmul(i, w_fi) + tf.matmul(o, w_fo) + b_f)
-            output_gate = tf.sigmoid(tf.matmul(i, w_oi) + tf.matmul(o, w_oo) + b_o)
-            memory_cell = tf.sigmoid(tf.matmul(i, w_ci) + tf.matmul(o, w_co) + b_c)
+        with tf.name_scope('lstm_sigmoid'):
+            input_gate = tf.sigmoid(tf.matmul(i, w_ii) + tf.matmul(o, w_io) + b_i, name='input_gate')
+            tf.summary.histogram('input gate', input_gate)
+            forget_gate = tf.sigmoid(tf.matmul(i, w_fi) + tf.matmul(o, w_fo) + b_f, name='forget_gate')
+            tf.summary.histogram('forget gate', forget_gate)
+            output_gate = tf.sigmoid(tf.matmul(i, w_oi) + tf.matmul(o, w_oo) + b_o, name='output_gate')
+            tf.summary.histogram('output gate', output_gate)
+            memory_cell = tf.sigmoid(tf.matmul(i, w_ci) + tf.matmul(o, w_co) + b_c, name='memory_cell')
+            tf.summary.histogram('memory cell', memory_cell)
             state = input_gate * memory_cell + forget_gate * state
+            tf.summary.histogram('state', state)
             output = output_gate * tf.tanh(state)
+            tf.summary.histogram('output', output)
 
         return output, state
 
-    # OPERATIONS
     # LSTM
-    output = tf.zeros([batch_size, hidden_layer_size])
-    state = tf.zeros([batch_size, hidden_layer_size])
-    outputs_all_i = output
-    labels_all_i = data[:, 1, :]
-    for i in range(1, len_per_section):
-        output, state = lstm(data[:, i, :], output, state)
-        if i != len_per_section - 1:
-            outputs_all_i = tf.concat([outputs_all_i, output],0 )
-            labels_all_i = tf.concat([labels_all_i, data[:, i + 1, :]], 0)
-        else:
-            outputs_all_i = tf.concat([outputs_all_i, output], 0)
-            labels_all_i = tf.concat([labels_all_i, labels], 0)
+    with tf.name_scope('training'):
+        output = tf.zeros([batch_size, hidden_layer_size])
+        tf.summary.histogram('output', output)
+        state = tf.zeros([batch_size, hidden_layer_size])
+        tf.summary.histogram('state', state)
+        outputs_all_i = output
+        labels_all_i = data[:, 1, :]
+        for i in range(1, len_per_section):
+            output, state = lstm(data[:, i, :], output, state)
+            if i != len_per_section - 1:
+                outputs_all_i = tf.concat([outputs_all_i, output], 0)
+                labels_all_i = tf.concat([labels_all_i, data[:, i + 1, :]], 0)
+            else:
+                outputs_all_i = tf.concat([outputs_all_i, output], 0)
+                labels_all_i = tf.concat([labels_all_i, labels], 0)
 
-    w = tf.Variable(tf.truncated_normal([hidden_layer_size, vocab_size], -0.1, 0.1))
-    b = tf.Variable(tf.zeros([vocab_size]))
-    logits = tf.matmul(outputs_all_i, w) + b
-    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels_all_i))
-    optimizer = tf.train.GradientDescentOptimizer(10.).minimize(loss, global_step=global_step)
+        w = tf.Variable(tf.truncated_normal([hidden_layer_size, vocab_size], -0.1, 0.1))
+        b = tf.Variable(tf.zeros([vocab_size]))
+        logits = tf.matmul(outputs_all_i, w) + b
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels_all_i))
+        tf.summary.scalar('Loss', loss)
+        optimizer = tf.train.GradientDescentOptimizer(10.).minimize(loss, global_step=global_step)
+        summary = tf.summary.merge_all()
+# =================================================================================================================
 
+# TRAIN MODEL
 with tf.Session(graph=graph) as sess:
     tf.global_variables_initializer().run()
-    offset = 0
     saver = tf.train.Saver()
+    summary_writer = tf.summary.FileWriter(logdir=ckpt_dir, graph=sess.graph)
+    
+
+    offset = 0
     for step in range(max_steps):
         offset = offset % len(x)
         # BATCHIFICATION
@@ -148,25 +177,14 @@ with tf.Session(graph=graph) as sess:
         _, training_loss = sess.run([optimizer, loss], feed_dict={data: batch_data, labels: batch_labels})
 
         if step % log_every == 0:
+            summary_str = sess.run(summary, feed_dict={data: batch_data, labels: batch_labels})
+            summary_writer.add_summary(summary_str, step)
+            summary_writer.flush()
             print('====================\nTIME: {}\nSTEP: {}\n LOSS: {}'.format(datetime.datetime.now(),
                                                                                step,
                                                                                training_loss))
         if step % save_every == 0:
             saver.save(sess, ckpt_dir + '\\model', global_step=step)
-
-
-def sample(prediction):
-    rand_prob = random.uniform(0, 1)
-    cumulative_prob = 0
-    char_idx = len(prediction) - 1
-    for idx in range(len(prediction)):
-        cumulative_prob += prediction[idx]
-        if cumulative_prob >= rand_prob:
-            char_idx = idx
-            break
-
-    char_one_hot = np.eye(vocab_size)[char_idx]
-    return char_one_hot
 
 
 if __name__ == '__main__':
