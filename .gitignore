@@ -68,3 +68,5 @@ trump_tweets/
 reddit_data/
 
 *.pkl
+
+ckpt/
