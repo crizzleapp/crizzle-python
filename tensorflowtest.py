@@ -3,6 +3,7 @@ import logging
 import datetime
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.client import timeline
 import data_encoder as de
 
 
@@ -159,7 +160,8 @@ with tf.Session(graph=graph) as sess:
     tf.global_variables_initializer().run()
     saver = tf.train.Saver()
     summary_writer = tf.summary.FileWriter(logdir=ckpt_dir, graph=sess.graph)
-    
+    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+    run_metadata = tf.RunMetadata()
 
     offset = 0
     for step in range(max_steps):
@@ -174,10 +176,16 @@ with tf.Session(graph=graph) as sess:
             batch_data = np.concatenate((x[offset: len(x)], x[0: to_add]))
             batch_labels = np.concatenate((y[offset: len(x)], y[0: to_add]))
             offset = to_add
-        _, training_loss = sess.run([optimizer, loss], feed_dict={data: batch_data, labels: batch_labels})
+        _, training_loss = sess.run([optimizer, loss],
+                                    feed_dict={data: batch_data, labels: batch_labels},
+                                    options=options,
+                                    run_metadata=run_metadata)
 
         if step % log_every == 0:
-            summary_str = sess.run(summary, feed_dict={data: batch_data, labels: batch_labels})
+            summary_str = sess.run(summary,
+                                   options=options,
+                                   run_metadata=run_metadata,
+                                   feed_dict={data: batch_data, labels: batch_labels})
             summary_writer.add_summary(summary_str, step)
             summary_writer.flush()
             print('====================\nTIME: {}\nSTEP: {}\n LOSS: {}'.format(datetime.datetime.now(),
@@ -185,6 +193,11 @@ with tf.Session(graph=graph) as sess:
                                                                                training_loss))
         if step % save_every == 0:
             saver.save(sess, ckpt_dir + '\\model', global_step=step)
+
+        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+        with open('timeline_01.json', 'w') as f:
+            f.write(chrome_trace)
 
 
 if __name__ == '__main__':
