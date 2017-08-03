@@ -66,3 +66,5 @@ trump_tweets/
 \.idea/
 
 reddit_data/
+
+*.pkl
