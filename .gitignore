@@ -70,3 +70,7 @@ reddit_data/
 *.pkl
 
 ckpt/
+
+GoogleNews-vectors-negative300\.bin\.gz
+
+glove\.6B\.300d\.txt
