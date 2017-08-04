@@ -3,9 +3,9 @@ import logging
 import datetime
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.client import timeline
 import data_encoder as de
 
+# TODO: replace feed_dicts with queues
 
 # SET LOGGING LEVELS
 logging_level = logging.INFO
@@ -13,59 +13,62 @@ tf_logging_level = tf.logging.ERROR
 logging.basicConfig(level=logging_level)
 tf.logging.set_verbosity(tf_logging_level)
 
-# HYPERPARAMETERS
+# CONSTANTS
+skip = 2
+len_per_section = 50
 log_every = 100
+save_every = 500
+checkpoint_directory = 'ckpt'
+
+# HYPERPARAMETERS
 num_epochs = 100
 batch_size = 512
-save_every = 500
 max_steps = 2001
 learning_rate = 1e-1
 hidden_layer_size = 1024
 
-# LOAD DATA
-# TODO: open real text here
-with open('1984.txt') as f:
-    text = f.read()
 
-# GET UNIQUES
-unique_chars = sorted(list(set(text)))
-vocab_size = len(unique_chars)
-print('Text is {} characters long'.format(len(text)))
-print('Number of unique characters in text: {}'.format(vocab_size))
-# GENERATE MAPS BETWEEN TOKENS AND INDICES
-index_to_token = {index: token for index, token in enumerate(unique_chars)}
-token_to_index = {token: index for index, token in enumerate(unique_chars)}
-
-# GENERATE SECTIONS AND NEXT_CHARS
-len_per_section = 50
-skip = 2
-sections = []
-next_chars = []
-for i in range(0, len(text) - len_per_section, skip):
-    sections.append(text[i: i + len_per_section])
-    next_chars.append(text[i + len_per_section])
-
-# GENERATE TRAINING DATA
-x = np.zeros((len(sections), len_per_section, vocab_size), dtype=np.float32)
-y = np.zeros((len(sections), vocab_size), dtype=np.float32)
-for i, section in enumerate(sections):
-    for j, char in enumerate(section):
-        x[i, j, token_to_index[char]] = 1
-    y[i, token_to_index[next_chars[i]]] = 1
-
-# PROVIDE STARTING SEQUENCE
-test_start = 'Winston'
+def load_data(filename):
+    with open(filename, 'r') as f:
+        text = f.read()
+    # GET UNIQUES
+    unique_chars = sorted(list(set(text)))
+    vocab_size = len(unique_chars)
+    # GENERATE MAPS BETWEEN TOKENS AND INDICES
+    index_to_token = {index: token for index, token in enumerate(unique_chars)}
+    token_to_index = {token: index for index, token in enumerate(unique_chars)}
+    return (text, unique_chars, vocab_size, index_to_token, token_to_index)
 
 
-# SET CHECKPOINT DIRECTORY
-ckpt_dir = 'ckpt'
-logging.debug('checkpoint subdirectory: {}'.format(ckpt_dir))
-# CLEAR CHECKPOINT DIRECTORY
-if tf.gfile.Exists(ckpt_dir):
-    tf.gfile.DeleteRecursively(ckpt_dir)
-    logging.info('Checkpoint directory deleted')
-tf.gfile.MakeDirs(ckpt_dir)
-logging.info('New checkpoint directory created')
+def make_sections_and_next_chars(text, len_per_section, skip):
+    # GENERATE SECTIONS AND NEXT_CHARS
+    sections = []
+    next_chars = []
+    for i in range(0, len(text) - len_per_section, skip):
+        sections.append(text[i: i + len_per_section])
+        next_chars.append(text[i + len_per_section])
+    return (sections, next_chars)
+
+
+def generate_training_data(sections, len_per_section, vocab_size, token_to_index):
+    x = np.zeros((len(sections), len_per_section, vocab_size), dtype=np.float32)
+    y = np.zeros((len(sections), vocab_size), dtype=np.float32)
+    # ONE-HOT ENCODE
+    for i, section in enumerate(sections):
+        for j, char in enumerate(section):
+            x[i, j, token_to_index[char]] = 1
+        y[i, token_to_index[next_chars[i]]] = 1
+    return(x, y)
+
+
+def create_checkpoint_dir(dir_name):
+    logging.debug('checkpoint subdirectory: {}'.format(dir_name))
+    # CLEAR CHECKPOINT DIRECTORY
+    if tf.gfile.Exists(dir_name):
+        tf.gfile.DeleteRecursively(dir_name)
+        logging.info('Checkpoint directory deleted')
+    tf.gfile.MakeDirs(dir_name)
+    logging.info('New checkpoint directory created')
 
 
 def sample(prediction):
@@ -81,6 +84,15 @@ def sample(prediction):
     char_one_hot = np.eye(vocab_size)[char_idx]
     return char_one_hot
 
+
+text, unique_chars, vocab_size, index_to_token, token_to_index = load_data('1984.txt')
+sections, next_chars = make_sections_and_next_chars(text, len_per_section=len_per_section, skip=skip)
+x, y = generate_training_data(sections, len_per_section, vocab_size, token_to_index)
+create_checkpoint_dir(checkpoint_directory)
+
+
+# PROVIDE STARTING SEQUENCE
+test_start = 'Winston'
 
 # CREATE GRAPH
 graph = tf.Graph()
@@ -159,9 +171,7 @@ with graph.as_default():
 with tf.Session(graph=graph) as sess:
     tf.global_variables_initializer().run()
     saver = tf.train.Saver()
-    summary_writer = tf.summary.FileWriter(logdir=ckpt_dir, graph=sess.graph)
-    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-    run_metadata = tf.RunMetadata()
+    summary_writer = tf.summary.FileWriter(logdir=checkpoint_directory, graph=sess.graph)
 
     offset = 0
     for step in range(max_steps):
@@ -176,28 +186,17 @@ with tf.Session(graph=graph) as sess:
             batch_data = np.concatenate((x[offset: len(x)], x[0: to_add]))
             batch_labels = np.concatenate((y[offset: len(x)], y[0: to_add]))
             offset = to_add
-        _, training_loss = sess.run([optimizer, loss],
-                                    feed_dict={data: batch_data, labels: batch_labels},
-                                    options=options,
-                                    run_metadata=run_metadata)
+        _, training_loss = sess.run([optimizer, loss], feed_dict={data: batch_data, labels: batch_labels})
 
         if step % log_every == 0:
-            summary_str = sess.run(summary,
-                                   options=options,
-                                   run_metadata=run_metadata,
-                                   feed_dict={data: batch_data, labels: batch_labels})
+            summary_str = sess.run(summary, feed_dict={data: batch_data, labels: batch_labels})
             summary_writer.add_summary(summary_str, step)
             summary_writer.flush()
             print('====================\nTIME: {}\nSTEP: {}\n LOSS: {}'.format(datetime.datetime.now(),
                                                                                step,
                                                                                training_loss))
         if step % save_every == 0:
-            saver.save(sess, ckpt_dir + '\\model', global_step=step)
-
-        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-        chrome_trace = fetched_timeline.generate_chrome_trace_format()
-        with open('timeline_01.json', 'w') as f:
-            f.write(chrome_trace)
+            saver.save(sess, checkpoint_directory + '\\model', global_step=step)
 
 
 if __name__ == '__main__':
