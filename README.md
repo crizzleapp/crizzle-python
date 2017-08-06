@@ -2,7 +2,7 @@
 Recurrent Neural Network
 </h1>
 <h2>
-generrating text from novels
+Generating text from novels
 </h2>
 <p>
 placeholder
