@@ -3,6 +3,7 @@ from itertools import chain, islice, repeat
 import traceback
 import logging
 import pickle
+import glob
 import nltk
 import sys
 import os
@@ -53,7 +54,7 @@ def read(filename, vocab_fraction=0, sentence_tokenized=False):
     global data
 
     # load raw data
-        raw_data = open(filename, 'r').read()
+    raw_data = open(filename, 'r').read()
 
     # sentence tokenize data
     if not sentence_tokenized:
@@ -104,9 +105,11 @@ def tokens_to_indices(tokens, unique_tokens):
     # mapping from tokens to indices
     token_to_index = {w: i for i, w in enumerate(unique_tokens)}
     index_to_token = {i: w for i, w in enumerate(unique_tokens)}
+
     # replace all invalid tokens with UNKOWN_TOKEN
     for i, sent in enumerate(tokens):
         tokens[i] = [w if w in unique_tokens[:-1] else UNKNOWN_TOKEN for w in sent]
+
     indices = [[token_to_index[word] for word in sent] for sent in tokens]
     data_update = {'indices': indices,
                    'token_to_index': token_to_index,
@@ -115,47 +118,63 @@ def tokens_to_indices(tokens, unique_tokens):
     return indices
 
 
-def one_hot_encode_indices(indices, vocab_size):
+def one_hot_encode_indices(indices, vocab_size, zero_pad=False):
     """
     Encode given data (or default data) as one-hot numpyvectors
     :param indices: String. If None, uses raw_data from self.data
     :return: one-hot encoded numpy array
     """
     global data
-    index_to_one_hot = dict((index, enc) for index, enc in zip(range(vocab_size), np.eye(vocab_size, dtype=bool)))
+    identity_matrix = np.eye(vocab_size, dtype=bool).tolist()
+    index_to_one_hot = dict((index, enc) for index, enc in zip(range(vocab_size), identity_matrix))
     one_hot = [[index_to_one_hot[index] for index in sentence] for sentence in indices]
-    max_sentece_length = max([len(sentence) for sentence in indices])
+    # get length of longest sentence
+    max_sentence_length = len(max(indices, key=len))
+
+    # pad sentences with zeros
+    if zero_pad:
+        for sentence in one_hot:
+            num_zeros = max_sentence_length - len(sentence)
+            sentence += [[0] * vocab_size] * num_zeros
+        one_hot = np.array(one_hot, dtype=bool)
+
     data_update = {'index_to_one_hot': index_to_one_hot,
                    'one_hot': one_hot,
-                   'max_sentence_length': max_sentece_length}
+                   'max_sentence_length': max_sentence_length}
     _update_data(data_update)
     return one_hot
 
 
-def one_hot_encode_tokens(tokens, vocab_size):
+def one_hot_encode_tokens(tokens, unique_tokens, zero_pad=False):
     """
     Encode given data (or default data) as one-hot nested list
     :param tokens (list): nested list of word-tokenized sentences
     :return (list): one-hot encoded list
     """
     global data
-    indices = tokens_to_indices(data['tokens'], data['unique_tokens'])
-    one_hot = one_hot_encode_indices(indices, vocab_size)
+    vocab_size = len(unique_tokens)
+    indices = tokens_to_indices(tokens, unique_tokens)
+    one_hot = one_hot_encode_indices(indices, vocab_size, zero_pad=zero_pad)
     data_update = {'indices': indices,
                    'one_hot': one_hot}
     _update_data(data_update)
     return one_hot
 
 
-def one_hot_decode(one_hot_data=None):
+def one_hot_decode(one_hot_data, index_to_token):
     """
     Convert one-hot encoded vectors to vector containing integer indices
     :param one_hot_data:
     :return:
     """
-    if one_hot_data is None:
-        one_hot_data = self.data['one_hot']
-    return np.argmax(one_hot_data, axis=int(len(one_hot_data.shape) != 1))
+    indices = []
+    tokens = []
+    for sentence in one_hot_data:
+        indices.append(np.argmax(sentence, axis=1))
+        tokens.append([index_to_token[word] for word in sentence])
+    return indices, tokens
+
+
 def save_data(obj_name):
     """
     pirkcle and save object data at <working_dir>\<data_filename>\objname
@@ -169,7 +188,7 @@ def save_data(obj_name):
     dir = sys.path[0]
     subfolder = os.path.join(data['filename'].split('.')[0] + '_data', 'pickled_data')
     save_folder = os.path.join(dir, subfolder)
-    save_file = os.path.join(save_folder, obj_name)
+    save_file = os.path.join(save_folder, obj_name) + '.pkl'
 
     try:
         os.makedirs(save_folder)
@@ -177,12 +196,12 @@ def save_data(obj_name):
         pass
 
     with open(save_file, 'wb') as f:
-        pickle.dump(data[obj_name], f)
+        pickle.dump(data[obj_name], f, protocol=-1)
 
     return save_file
 
 
-def load_data(filename):
+def load_data(full_path_to_data):
     """
     Args:
         filename (str): name of key to store loaded data in
@@ -190,18 +209,31 @@ def load_data(filename):
         object from loaded data
     """
     global data
-    dir = sys.path[0]
-    subfolder = os.path.join(data['filename'].split('.')[0] + '_data', 'pickled_data')
-    save_folder = os.path.join(dir, subfolder)
-    save_file = os.path.join(save_folder, filename)
 
+    filename = os.path.split(full_path_to_data)[1].split('.')[0]
     try:
-        with open(save_file, 'rb') as f:
+        with open(full_path_to_data, 'rb') as f:
             _update_data({filename: pickle.load(f)})
     except Exception as e:
         logging.error("Unable to open file at {}".format(save_file))
         logging.info(traceback.format_exc())
     return data[filename]
+
+
+def save_all_data(data_file_name):
+    _update_data({'filename': data_file_name})
+    for attribute in data.keys():
+        save_data(attribute)
+
+
+def load_all_data(data_file_name):
+    # TODO: read all files in directory and iterate over them
+    current_dir = sys.path[0]
+    subfolder = os.path.join(data_file_name.split('.')[0] + '_data', 'pickled_data')
+    save_folder = os.path.join(current_dir, subfolder)
+    files = glob.glob(os.path.join(save_folder, '*.pkl'))
+    for file in files:
+        load_data(file)
 
 
 def batch(batch_size):
@@ -214,7 +246,7 @@ def batch(batch_size):
         pass
 
 
-def main(filename=None, vocab_fraction=1):
+def _main(filename=None, vocab_fraction=1):
     """
     Args:
         filename (str): If not provided, read() method must be called explicitly to add data
@@ -222,22 +254,15 @@ def main(filename=None, vocab_fraction=1):
     global data
     if filename is not None:
         read(filename=filename, vocab_fraction=vocab_fraction)  # read raw data from file
-        one_hot_encode_tokens(data['tokens'], data['vocab_size'])
+        one_hot_encode_tokens(data['tokens'], data['unique_tokens'], zero_pad=True)
         return filename
 
     # TODO: condition: filename == None -- what then?
 
 
 if __name__ == '__main__':
-    data_to_save = ['index_to_token',
-                    'token_to_index',
-                    'index_to_one_hot',
-                    'sentences',
-                    'indices',
-                    'unique_tokens']
+    _main('1984.txt', vocab_fraction=0.95)
+    save_all_data(data['filename'])
 
-    main('1984.txt', vocab_fraction=0.95)
-    for obj_name in data_to_save:
-        save_data(obj_name)
-
-    print('All done')
+    # load_all_data('1984.txt')
+    print(data['one_hot'])
