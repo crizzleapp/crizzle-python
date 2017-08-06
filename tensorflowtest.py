@@ -1,9 +1,9 @@
-import random
-import logging
 import datetime
+import logging
+import random
+
 import numpy as np
 import tensorflow as tf
-import data_encoder as de
 
 # TODO: replace feed_dicts with queues
 
@@ -18,7 +18,7 @@ skip = 2
 len_per_section = 50
 log_every = 100
 save_every = 500
-checkpoint_directory = 'ckpt'
+checkpoint_directory = 'data\\ckpt'
 
 # HYPERPARAMETERS
 num_epochs = 100
@@ -98,34 +98,33 @@ test_start = 'Winston'
 graph = tf.Graph()
 with graph.as_default():
     global_step = tf.Variable(0)
-    with tf.name_scope('input_data'):
-        data = tf.placeholder(tf.float32, [batch_size, len_per_section, vocab_size], name='data_feed')
-        labels = tf.placeholder(tf.float32, [batch_size, vocab_size], name='label_feed')
-
-    with tf.name_scope('input'):
+    with tf.variable_scope('input_data'):
+        data = tf.placeholder(tf.float32, [batch_size, len_per_section, vocab_size], name='data')
+        labels = tf.placeholder(tf.float32, [batch_size, vocab_size], name='labels')
+    with tf.variable_scope('input'):
         # Input gate: weights for input, weights for previous input, bias
         w_ii = tf.Variable(tf.truncated_normal([vocab_size, hidden_layer_size], -0.1, 0.1), name='weight_in')
         w_io = tf.Variable(tf.truncated_normal([hidden_layer_size, hidden_layer_size], -0.1, 0.1), name='weight_out')
         b_i = tf.Variable(tf.zeros([1, hidden_layer_size]), name='bias')
-    with tf.name_scope('forget'):
+    with tf.variable_scope('forget'):
         # Forget gate
         w_fi = tf.Variable(tf.truncated_normal([vocab_size, hidden_layer_size], -0.1, 0.1), name='weight_in')  # current in weights
         w_fo = tf.Variable(tf.truncated_normal([hidden_layer_size, hidden_layer_size], -0.1, 0.1), name='weight_out')  # prev out weights
         b_f = tf.Variable(tf.zeros([1, hidden_layer_size]), name='bias')
-    with tf.name_scope('output'):
+    with tf.variable_scope('output'):
         # Output gate
         w_oi = tf.Variable(tf.truncated_normal([vocab_size, hidden_layer_size], -0.1, 0.1), name='weight_in')  # current in weights
         w_oo = tf.Variable(tf.truncated_normal([hidden_layer_size, hidden_layer_size], -0.1, 0.1), name='weight_out')  # prev out weights
         b_o = tf.Variable(tf.zeros([1, hidden_layer_size]), name='bias')
-    with tf.name_scope('memory'):
+    with tf.variable_scope('memory'):
         # Memory Cell
         w_ci = tf.Variable(tf.truncated_normal([vocab_size, hidden_layer_size], -0.1, 0.1), name='weight_in')  # current in weights
         w_co = tf.Variable(tf.truncated_normal([hidden_layer_size, hidden_layer_size], -0.1, 0.1), name='weight_out')  # prev out weights
         b_c = tf.Variable(tf.zeros([1, hidden_layer_size]), name='bias')
 
 
-    def lstm(i, o, state):
-        with tf.name_scope('lstm_sigmoid'):
+    def lstm_cell(i, o, state):
+        with tf.variable_scope('lstm_sigmoid'):
             input_gate = tf.sigmoid(tf.matmul(i, w_ii) + tf.matmul(o, w_io) + b_i, name='input_gate')
             tf.summary.histogram('input gate', input_gate)
             forget_gate = tf.sigmoid(tf.matmul(i, w_fi) + tf.matmul(o, w_fo) + b_f, name='forget_gate')
@@ -135,22 +134,24 @@ with graph.as_default():
             memory_cell = tf.sigmoid(tf.matmul(i, w_ci) + tf.matmul(o, w_co) + b_c, name='memory_cell')
             tf.summary.histogram('memory cell', memory_cell)
             state = input_gate * memory_cell + forget_gate * state
-            tf.summary.histogram('state', state)
             output = output_gate * tf.tanh(state)
-            tf.summary.histogram('output', output)
 
         return output, state
 
     # LSTM
-    with tf.name_scope('training'):
+    with tf.variable_scope('training'):
+        #
         output = tf.zeros([batch_size, hidden_layer_size])
         tf.summary.histogram('output', output)
         state = tf.zeros([batch_size, hidden_layer_size])
         tf.summary.histogram('state', state)
         outputs_all_i = output
         labels_all_i = data[:, 1, :]
-        for i in range(1, len_per_section):
-            output, state = lstm(data[:, i, :], output, state)
+
+        for i in range(0, len_per_section, skip):
+            # CREATE LSTM CELLS
+            output, state = lstm_cell(data[:, i, :], output, state)
+            #
             if i != len_per_section - 1:
                 outputs_all_i = tf.concat([outputs_all_i, output], 0)
                 labels_all_i = tf.concat([labels_all_i, data[:, i + 1, :]], 0)
