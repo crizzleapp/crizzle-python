@@ -1,0 +1,3 @@
+[submodule "helpers/shapeshift_api"]
+	path = helpers/shapeshift_api
+	url = https://github.com/tasercake/shapeshiftio
