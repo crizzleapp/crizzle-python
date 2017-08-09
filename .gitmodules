@@ -1,0 +1,6 @@
+[submodule "helpers/shapeshift_api"]
+	path = helpers/shapeshift_api
+	url = https://github.com/tasercake/shapeshiftio
+[submodule "helpers/kraken_api"]
+	path = helpers/kraken_api
+	url = https://github.com/tasercake/python3-krakenex
