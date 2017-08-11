@@ -4,3 +4,5 @@
 [submodule "helpers/kraken_api"]
 	path = helpers/kraken_api
 	url = https://github.com/tasercake/python3-krakenex
+[submodule "helpers/poloniex_api"]
+	url = https://github.com/tasercake/polonio
