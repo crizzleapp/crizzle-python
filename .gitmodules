@@ -6,3 +6,6 @@
 	url = https://github.com/tasercake/python3-krakenex
 [submodule "helpers/poloniex_api"]
 	url = https://github.com/tasercake/polonio
+[submodule "gym-cryptomarket"]
+	path = gym-cryptomarket
+	url = https://github.com/tasercake/gym-cryptomarket
