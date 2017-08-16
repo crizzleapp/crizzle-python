@@ -1,10 +1,11 @@
-[submodule "helpers/shapeshift_api"]
-	path = exchanges/shapeshift_api
+[submodule "exchanges/shapeshiftio"]
+	path = exchanges/shapeshiftio
 	url = https://github.com/tasercake/shapeshiftio
-[submodule "helpers/kraken_api"]
-	path = exchanges/kraken_api
+[submodule "exchanges/krakenex"]
+	path = exchanges/krakenex
 	url = https://github.com/tasercake/python3-krakenex
-[submodule "exchanges/poloniex_api"]
+[submodule "exchanges/polonio"]
+    path = exchanges/polonio
 	url = https://github.com/tasercake/polonio
 [submodule "cryptomarket"]
 	path = cryptomarket
