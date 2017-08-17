@@ -1,3 +1,3 @@
-from .shapeshift_api import shapeshiftio
-from .kraken_api import krakenex
-from .poloniex_api import polonio
+from .shapeshiftio import shapeshiftio
+from .krakenex import krakenex
+from .polonio import polonio
