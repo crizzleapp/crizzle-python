@@ -37,7 +37,7 @@ def load_data(filename):
     # GENERATE MAPS BETWEEN TOKENS AND INDICES
     index_to_token = {index: token for index, token in enumerate(unique_chars)}
     token_to_index = {token: index for index, token in enumerate(unique_chars)}
-    return (text, unique_chars, vocab_size, index_to_token, token_to_index)
+    return text, unique_chars, vocab_size, index_to_token, token_to_index
 
 
 def make_sections_and_next_chars(text, len_per_section, skip):
@@ -47,7 +47,7 @@ def make_sections_and_next_chars(text, len_per_section, skip):
     for i in range(0, len(text) - len_per_section, skip):
         sections.append(text[i: i + len_per_section])
         next_chars.append(text[i + len_per_section])
-    return (sections, next_chars)
+    return sections, next_chars
 
 
 def generate_training_data(sections, len_per_section, vocab_size, token_to_index):
@@ -58,7 +58,7 @@ def generate_training_data(sections, len_per_section, vocab_size, token_to_index
         for j, char in enumerate(section):
             x[i, j, token_to_index[char]] = 1
         y[i, token_to_index[next_chars[i]]] = 1
-    return(x, y)
+    return x, y
 
 
 def create_checkpoint_dir(dir_name):
