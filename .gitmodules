@@ -1,9 +1,3 @@
 [submodule "cryptomarket"]
 	path = cryptomarket
 	url = https://github.com/tasercake/cryptomarket
-[submodule "exchanges/polonio"]
-	path = exchanges/polonio
-	url = https://github.com/tasercake/polonio
-[submodule "exchanges/krakenex"]
-	path = exchanges/krakenex
-	url = https://github.com/tasercake/krakenex
