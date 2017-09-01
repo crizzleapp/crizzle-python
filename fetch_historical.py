@@ -6,6 +6,7 @@ from os.path import exists
 import polonio
 import logging
 import pandas as pd
+pd.set_option('display.width', 300)
 
 DATA_DIR = 'G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical'
 CURRENCY_PAIRS = ['USDT_ETH', 'USDT_BTC']
@@ -47,7 +48,7 @@ def save_df(df, name, interval, compress=False):
     path = '{}\\{}'.format(DATA_DIR, int(interval//60))
     if not exists(path):
         makedirs(path)
-    path += '\\.{}csv'.format(name)
+    path += '\\{}.csv'.format(name)
     if compress == 'gzip':
         path += '.gz'
 
@@ -72,5 +73,5 @@ def fetch_histories(currency_pairs, interval, compress=False):
 
 if __name__ == '__main__':
     CURRENCY_PAIRS = list(get_all_currency_pairs())
-    for interval in reversed([300, 900, 1800, 7200, 14400, 86400]):
-        fetch_histories(CURRENCY_PAIRS, interval, compress=COMPRESS)
+    for i in reversed([300, 900, 1800, 7200, 14400, 86400]):
+        fetch_histories(CURRENCY_PAIRS, i, compress=COMPRESS)
