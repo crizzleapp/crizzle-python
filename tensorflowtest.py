@@ -17,8 +17,8 @@ logging.basicConfig(level=logging.INFO)
 end = 100
 interval = 0.01
 # total length = end / interval
-test_fraction = 0.2
-sequence_length = 50
+test_fraction = 0.1
+sequence_length = 51
 epochs = 1
 sine = np.sin(np.arange(0, end, interval))
 
@@ -61,6 +61,7 @@ def build_model(layers):
     model.add(LSTM(layers[2], return_sequences=False))
     model.add(Dropout(0.1))
     model.add(Dense(output_dim=layers[3]))
+    model.add(Activation('linear'))
 
     start = time.clock()
     model.compile(loss='mse', optimizer='rmsprop')
@@ -72,18 +73,15 @@ def build_model(layers):
 
 def predict_next_point(model, inp):
     predicted = model.predict(inp)
-    # predicted = np.reshape(predicted, (predicted.size,))
+    predicted = np.reshape(predicted, (predicted.size,))
     return predicted
 
 
-def predict_sequence_full(model, inp, window_size):
-    frame = inp[0]
+def predict_sequence_full(model, inp):
     predicted = []
-    for i in range(len(inp)):
-        predicted.append(model.predict(frame[None, :, :])[0, 0])
-        frame = frame[1:]
-        frame = np.insert(frame, [window_size - 1], predicted[-1], axis=0)
-    return predicted
+    for i in inp:
+        predicted.append(model.predict(i[None, :, :]))
+    return np.array(predicted)
 
 
 def predict_sequences_multiple(model, inp, window_size, prediction_length):
@@ -95,8 +93,8 @@ def predict_sequences_multiple(model, inp, window_size, prediction_length):
         for j in range(prediction_length):
             predicted.append(model.predict(frame[None, :, :])[0, 0])
             frame = frame[1:]
-            frame = np.insert(frame, [window_size - 1], predicted[-1], axis=1)
-        prediction_sequences.append(predicted)
+            frame = np.insert(frame, [window_size - 1], predicted[-1], axis=0)
+            prediction_sequences.append(predicted)
     return prediction_sequences
 
 
@@ -132,11 +130,17 @@ y_test = test[:, -1]
 
 
 if __name__ == '__main__':
-    model = build_model([1, sequence_length, 100, 1])
+    model = build_model([1, sequence_length-1, 100, 1])
     print(x_train.shape)
     print(y_train.shape)
     print(x_test.shape)
     print(y_test.shape)
-    model.fit(x_train, y_train, batch_size=1024, nb_epoch=epochs, validation_data=0.1)
-    predictions = predict_sequences_multiple(model, x_test, sequence_length, 50)
-    plot_results_multiple(predictions, y_test, 50)
+    start = time.time()
+    model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
+    print('training took {} seconds'.format(time.time() - start))
+    start = time.time()
+    predictions = predict_sequence_full(model, x_test)
+    print('prediction took {} seconds'.format(time.time() - start))
+    predictions.shape = predictions.shape[0]
+    print(predictions.shape)
+    plot_results(predictions, y_test)
