@@ -7,26 +7,25 @@ import matplotlib.pyplot as plt
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
 from keras.utils import plot_model
-from keras.models import Sequential
+from keras.models import Sequential, load_model
+import read_historical as rh
 
 np.random.seed(0)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 warnings.filterwarnings('ignore')
 logging.basicConfig(level=logging.INFO)
 
-end = 100
-interval = 0.01
-# total length = end / interval
-test_fraction = 0.1
-sequence_length = 51
-epochs = 1
-sine = np.sin(np.arange(0, end, interval))
+
+def normalize(dataset):
+    return dataset - dataset.mean()
 
 
 def normalize_windows(windows):
     norm = []
     for window in windows:
-        normed_window = [((float(p) / (float(window[0]+0.00001)))) for p in window]
+        normed_window = [((float(p) / (float(window[0]+0.00001))) - 1) for p in window]
+        norm.append(normed_window)
+    return np.array(norm)
 
 
 def rolling_window(arr, window_size):
@@ -50,7 +49,7 @@ def plot_windows(array_of_arrays, animate=False):
 
 def build_model(layers):
     """
-    :param layers: [(LSTM in shapes 1, 0, 2), (Dense out shape)]
+    :param layers: [data dimensions, sequence length, LSTM layer 2 size, fully connected layer size]
     :return:
     """
     model = Sequential()
@@ -61,7 +60,8 @@ def build_model(layers):
     model.add(LSTM(layers[2], return_sequences=False))
     model.add(Dropout(0.1))
     model.add(Dense(output_dim=layers[3]))
-    model.add(Activation('linear'))
+    model.add(Activation('tanh'))
+    # model.add(Activation('linear'))
 
     start = time.clock()
     model.compile(loss='mse', optimizer='rmsprop')
@@ -88,7 +88,7 @@ def predict_sequences_multiple(model, inp, window_size, prediction_length):
     prediction_sequences = []
     for i in range(int(len(inp)/prediction_length)):
         # for every window in input data
-        frame = inp[i*prediction_length]
+        frame = inp[i*prediction_length]  # Which window to look at
         predicted = []
         for j in range(prediction_length):
             predicted.append(model.predict(frame[None, :, :])[0, 0])
@@ -111,16 +111,25 @@ def plot_results_multiple(predicted_data, true_data, prediction_len):
     fig = plt.figure(facecolor='white')
     ax = fig.add_subplot(111)
     ax.plot(true_data, label='True Data')
-    #Pad the list of predictions to shift it in the graph to it's correct start
     for i, data in enumerate(predicted_data):
         padding = [None for p in range(i * prediction_len)]
         plt.plot(padding + data, label='Prediction')
         plt.legend()
     plt.show()
 
-windows = rolling_window(sine, sequence_length)
-train = np.array(windows[:int((1-test_fraction)*len(windows))])
-test = np.array(windows[:int(test_fraction*len(windows))])
+
+model_from_disk = False
+
+end = 100
+interval = 0.01
+test_fraction = 0.2
+sequence_length = 101
+epochs = 1
+prediction_len = 50
+data = normalize(rh.load_historical_data('BTC_ETH', 30))
+windows = rh.generate_windows(data, sequence_length)
+
+train, test = np.split(windows, [int((1-test_fraction)*len(windows))])
 x_train = train[:, :-1]
 x_test = test[:, :-1]
 x_train = np.expand_dims(x_train, 2)
@@ -130,17 +139,26 @@ y_test = test[:, -1]
 
 
 if __name__ == '__main__':
-    model = build_model([1, sequence_length-1, 100, 1])
+    print(windows.shape)
+    print(train.shape)
+    print(test.shape)
     print(x_train.shape)
     print(y_train.shape)
     print(x_test.shape)
     print(y_test.shape)
-    start = time.time()
-    model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
-    print('training took {} seconds'.format(time.time() - start))
+
+    if not model_from_disk:
+        model = build_model([1, sequence_length-1, 100, 1])
+        start = time.time()
+        model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
+        model.save('model.hdf5')
+        print('training took {} seconds'.format(time.time() - start))
+    else:
+        model = load_model('model.hdf5')
+        print('Loaded model from disk')
+
     start = time.time()
     predictions = predict_sequence_full(model, x_test)
     print('prediction took {} seconds'.format(time.time() - start))
     predictions.shape = predictions.shape[0]
-    print(predictions.shape)
     plot_results(predictions, y_test)
