@@ -1,7 +1,9 @@
+import numpy as np
 import pandas as pd
+np.set_printoptions()
 pd.set_option('display.width', 300)
 
-DESIRED_COLUMNS = ('date', 'open', 'volume')
+DESIRED_COLUMNS = ('open')
 VALID_INTERVALS = [i/60 for i in [300, 900, 1800, 7200, 14400, 86400]]
 DATA_DIR = 'G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical'
 INTERVAL = 15  # listing interval of dataset to load
@@ -27,16 +29,23 @@ def cols(df, column_list):
     assert isinstance(column_list, (list, tuple))
     return df.ix[:, column_list]
 
-def select(df, column_list, start_row, num_rows):
+def select(df, column_list, start_row=0, num_rows=None):
+    if num_rows is None:
+        num_rows = len(df)
     return df.ix[start_row: num_rows - 1, column_list]
 # endregion
 
 
 # region GENERATE DATASETS
-def generate_sequences(df, min_length, max_length, columns=DESIRED_COLUMNS):
-    pass
+def generate_windows(df, window_size, columns=DESIRED_COLUMNS):
+    arr = np.array(select(df, columns))
+    shape = (arr.shape[0] - window_size + 1, window_size) + arr.shape[1:]
+    strides = (arr.strides[0],) + arr.strides
+    ret = np.lib.stride_tricks.as_strided(arr, shape=shape, strides=strides)
+    return ret
 
 
 if __name__ == '__main__':
-    data = load_historical_data('USDT_BTC', 15)
-    print(select(data, ['date', 'open', 'volume'], 0, 10))
+    data = load_historical_data('USDT_BTC', 1440)
+    print(data[:5])
+    print(generate_windows(data, 5))
