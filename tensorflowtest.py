@@ -8,6 +8,7 @@ from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
 from keras.utils import plot_model
 from keras.models import Sequential, load_model
+
 import read_historical as rh
 
 # region Setup
@@ -30,10 +31,10 @@ def generate_windows(arr, window_size):
     return ret
 
 
-def train_test_split(dataset, test_fraction):
-    train, test = np.split(dataset, [int((1 - test_fraction) * len(dataset))])
-    x_train = train[:, :-1, :]
-    x_test = test[:, :-1, :]
+def train_test_split(dataset, fraction):
+    train, test = np.split(dataset, [int((1 - fraction) * len(dataset))])
+    x_train = train[None, :, :-1, :]
+    x_test = test[None, :, :-1, :]
     y_train = train[:, -1]
     y_test = test[:, -1]
     return (x_train, x_test, y_train, y_test)
@@ -67,8 +68,7 @@ def build_model(layers):
 
 # region Prediction Functions
 def predict_next_point(mod, inp):
-    predicted = mod.predict(inp)
-    predicted = np.reshape(predicted, (predicted.size,))
+    predicted = mod.predict(inp).squeeze()
     return predicted
 
 
@@ -83,37 +83,59 @@ def predict_sequence_full(mod, inp):
 
 
 # region Plotting Functions
-def plot_results(predicted_data, true_data):
-    fig = plt.figure(facecolor='white')
+def plot_results(predicted_data, full_dataset, fraction):
+    true_data = train_test_split(full_dataset, fraction)
+    xs = range(len(full_dataset))
+    fig = plt.figure(facecolor='white', figsize=(8, 5))
     ax = fig.add_subplot(111)
-    ax.plot(true_data, label='True Data')
-    plt.plot(predicted_data, label='Prediction')
+    ax.plot(xs[:len(true_data[2])], true_data[2][:, 0], label='Train Data')
+    ax.plot(xs[len(true_data[2]):], true_data[3][:, 0], label='Test Data')
+    plt.plot(xs[len(true_data[2]):], predicted_data, label='Predicted')
     plt.legend()
     plt.show()
+
+
+def setup_plot(full_dataset, fraction):
+    plt.ion()
+    true_data = train_test_split(full_dataset, fraction)
+    xs = range(len(full_dataset))
+    fig = plt.figure(facecolor='white', figsize=(8, 5))
+    ax = fig.add_subplot(111)
+    ax.plot(xs[:len(true_data[2])], true_data[2][:, 0], label='Train Data')
+    ax.plot(xs[len(true_data[2]):], true_data[3][:, 0], label='Test Data')
+    plt.legend()
+    plt.pause(0.01)
+    return (xs, ax, len(true_data[2]))
+
+
+def freeze_plot():
+    plt.ioff()
+    plt.show()
+
+
+def update_plot(predicted_data, xs, split_index):
+    plt.plot(xs[split_index:], predicted_data[0][:][0])
+    plt.pause(0.01)
 # endregion
 
 
 # region Hyperparameters
-model_from_disk = False
+model_from_disk = True
+interval = 30
 features = ['close']
 test_fraction = 0.1
 sequence_length = 11
 epochs = 1
-prediction_length = 50
 # endregion
 
-data = normalize(rh.load_historical_data('BTC_ETH', 30))
+data = normalize(rh.load_historical_data('BTC_ETH', interval))
 windows = rh.generate_windows(data, sequence_length, columns=features)
-x_train, x_test, y_train, y_test = train_test_split(windows, 0.1)
+x_train, x_test, y_train, y_test = train_test_split(windows, test_fraction)
+print(x_train.shape)
+print(y_train.shape)
 
 
 if __name__ == '__main__':
-    print(windows.shape)
-    print(x_train.shape)
-    print(y_train.shape)
-    print(x_test.shape)
-    print(y_test.shape)
-
     if not model_from_disk:
         model = build_model([len(features), sequence_length-1, 100, len(features)])
         start = time.time()
@@ -125,8 +147,9 @@ if __name__ == '__main__':
         print('Loaded model from disk')
 
     start = time.time()
-    predictions = predict_sequence_full(model, x_test)
+    predictions = []
+    xs, ax, index = setup_plot(windows, test_fraction)
+    for x in x_test:
+        predictions.append(model.predict(x[:, :-1]))
+        update_plot(predictions, xs, index)
     print('prediction took {} seconds'.format(time.time() - start))
-    print(predictions.shape)
-    predictions.shape = (predictions.shape[0], predictions.shape[2])
-    plot_results(predictions[:, 0], y_test[:, 0])
