@@ -53,9 +53,10 @@ def build_model(layers):
     :return:
     """
     model = Sequential()
-    model.add(LSTM(input_shape=(layers[1], layers[0]),
-                   output_dim=layers[1],
-                   return_sequences=True))
+    model.add(LSTM(layers[1], input_shape=(layers[1], layers[0]),
+                   return_sequences=True,
+                   # output_dim=layers[1]
+                   ))
     model.add(Dropout(0.1))
     model.add(LSTM(layers[2], return_sequences=False))
     model.add(Dropout(0.1))
@@ -120,22 +121,21 @@ def plot_results_multiple(predicted_data, true_data, prediction_len):
 
 model_from_disk = False
 
-end = 100
-interval = 0.01
-test_fraction = 0.2
-sequence_length = 101
+features = ['close', 'open']
+test_fraction = 0.1
+sequence_length = 11
 epochs = 1
 prediction_len = 50
 data = normalize(rh.load_historical_data('BTC_ETH', 30))
-windows = rh.generate_windows(data, sequence_length)
+windows = rh.generate_windows(data, sequence_length, columns=features)
 
 train, test = np.split(windows, [int((1-test_fraction)*len(windows))])
-x_train = train[:, :-1]
-x_test = test[:, :-1]
-x_train = np.expand_dims(x_train, 2)
-x_test = np.expand_dims(x_test, 2)
-y_train = train[:, -1]
-y_test = test[:, -1]
+x_train = train[:, :-1, :]
+x_test = test[:, :-1, :]
+x_train = x_train
+x_test = x_test
+y_train = train[:, -1, :]
+y_test = test[:, -1, :]
 
 
 if __name__ == '__main__':
@@ -148,7 +148,7 @@ if __name__ == '__main__':
     print(y_test.shape)
 
     if not model_from_disk:
-        model = build_model([1, sequence_length-1, 100, 1])
+        model = build_model([len(features), sequence_length-1, 100, len(features)])
         start = time.time()
         model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
         model.save('model.hdf5')
@@ -160,5 +160,6 @@ if __name__ == '__main__':
     start = time.time()
     predictions = predict_sequence_full(model, x_test)
     print('prediction took {} seconds'.format(time.time() - start))
-    predictions.shape = predictions.shape[0]
-    plot_results(predictions, y_test)
+    print(predictions.shape)
+    predictions.shape = (predictions.shape[0], predictions.shape[2])
+    plot_results(predictions[:, 0], y_test[:, 0])
