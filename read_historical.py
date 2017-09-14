@@ -46,4 +46,5 @@ def generate_windows(df, window_size, columns=DESIRED_COLUMNS):
 if __name__ == '__main__':
     data = load_historical_data('USDT_BTC', 15)
     print(generate_windows(data, 0).shape)
+    print(data.columns)
     print(generate_windows(data, 50).shape)

@@ -8,5 +8,5 @@
 * Numpy
 
 ### Training Datasets
-You can grab the full collection of CSV files from [here](https://goo.gl/iHmPs9
-"Google Drive download link")
+Grab the full collection of CSV files from [here](https://goo.gl/iHmPs9
+"Google Drive download link") and place the `histrorical` directory in the project directory under /data

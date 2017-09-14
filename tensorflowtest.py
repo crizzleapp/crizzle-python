@@ -8,8 +8,9 @@ from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
 from keras.utils import plot_model
 from keras.models import Sequential, load_model
-
 import read_historical as rh
+
+# TODO: API-ify this file
 
 # region Setup
 np.random.seed(0)
@@ -21,10 +22,14 @@ logging.basicConfig(level=logging.INFO)
 
 # region Pre-Processing
 def normalize(dataset):
-    return dataset - dataset.mean()
+    dataset = np.array(dataset)
+    mean = dataset.mean(axis=0)
+    print(mean)
+    return dataset - mean
 
 
 def generate_windows(arr, window_size):
+    arr = np.array(arr)
     shape = (arr.shape[0] - window_size + 1, window_size) + arr.shape[1:]
     strides = (arr.strides[0],) + arr.strides
     ret = np.lib.stride_tricks.as_strided(arr, shape=shape, strides=strides)
@@ -33,8 +38,8 @@ def generate_windows(arr, window_size):
 
 def train_test_split(dataset, fraction):
     train, test = np.split(dataset, [int((1 - fraction) * len(dataset))])
-    x_train = train[None, :, :-1, :]
-    x_test = test[None, :, :-1, :]
+    x_train = train[:, :-1, :]
+    x_test = test[:, :-1, :]
     y_train = train[:, -1]
     y_test = test[:, -1]
     return (x_train, x_test, y_train, y_test)
@@ -68,7 +73,7 @@ def build_model(layers):
 
 # region Prediction Functions
 def predict_next_point(mod, inp):
-    predicted = mod.predict(inp).squeeze()
+    predicted = mod.predict(inp).squeeze()[0]
     return predicted
 
 
@@ -76,7 +81,7 @@ def predict_sequence_full(mod, inp):
     predicted = []
     for i in inp:
         predicted.append(mod.predict(i[None, :, :]))
-    return np.array(predicted)
+    return np.array(predicted).squeeze()
 
 
 # endregion
@@ -113,32 +118,32 @@ def freeze_plot():
     plt.show()
 
 
-def update_plot(predicted_data, xs, split_index):
-    plt.plot(xs[split_index:], predicted_data[0][:][0])
-    plt.pause(0.01)
+def update_plot(predicted_data, index):
+    # print('index: {}, prediction: {}'.format(index, predicted_data))
+    plt.scatter(index, predicted_data, c='g', s=1)
+    plt.pause(0.1)
 # endregion
 
 
 # region Hyperparameters
-model_from_disk = True
-interval = 30
-features = ['close']
+model_from_disk = False
+interval = 1440
+features = ['high', 'low']
 test_fraction = 0.1
-sequence_length = 11
-epochs = 1
+sequence_length = 51
+epochs = 10
 # endregion
 
-data = normalize(rh.load_historical_data('BTC_ETH', interval))
-windows = rh.generate_windows(data, sequence_length, columns=features)
+data = normalize(rh.select(rh.load_historical_data('BTC_ETH', interval), column_list=features))
+windows = generate_windows(data, sequence_length)
 x_train, x_test, y_train, y_test = train_test_split(windows, test_fraction)
-print(x_train.shape)
-print(y_train.shape)
 
 
 if __name__ == '__main__':
     if not model_from_disk:
         model = build_model([len(features), sequence_length-1, 100, len(features)])
         start = time.time()
+        print('x_train shape: {}'.format(x_train.shape))
         model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
         model.save('model.hdf5')
         print('training took {} seconds'.format(time.time() - start))
@@ -147,9 +152,9 @@ if __name__ == '__main__':
         print('Loaded model from disk')
 
     start = time.time()
-    predictions = []
     xs, ax, index = setup_plot(windows, test_fraction)
-    for x in x_test:
-        predictions.append(model.predict(x[:, :-1]))
-        update_plot(predictions, xs, index)
+    for ix, x in enumerate(x_test):
+        prediction = (predict_next_point(model, x[None, :]))
+        update_plot(prediction, index+ix)
+    freeze_plot()
     print('prediction took {} seconds'.format(time.time() - start))
