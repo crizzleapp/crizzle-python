@@ -1,6 +1,8 @@
+import logging
 import matplotlib.pyplot as plt
 import preprocessing as pp
 
+logger = logging.getLogger(__name__)
 
 # region Plotting Functions
 def plot_results(predicted_data, full_dataset, fraction):

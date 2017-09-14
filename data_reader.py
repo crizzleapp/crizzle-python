@@ -1,8 +1,10 @@
+import logging
 import numpy as np
 import pandas as pd
 np.set_printoptions()
 pd.set_option('display.width', 300)
 
+logger = logging.getLogger(__name__)
 DESIRED_COLUMNS = ('open', 'volume')
 VALID_INTERVALS = [i/60 for i in [300, 900, 1800, 7200, 14400, 86400]]
 DATA_DIR = 'G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical'
@@ -22,31 +24,24 @@ def load_historical_data(pair, interval, columns=None):
 
 
 def rows(df, start, num_rows):
-    return df.ix[start:start + num_rows - 1]
+    return df[start:start + num_rows - 1]
 
 
 def cols(df, column_list):
-    return df.ix[:, column_list]
+    return df[column_list]
 
 
-def select(df, column_list, start_row=0, num_rows=None):
-    if num_rows is None:
-        num_rows = len(df)
-    return df.ix[start_row: num_rows - 1, column_list]
-# endregion
-
-
-# region GENERATE DATASETS
-def generate_windows(df, window_size, columns=DESIRED_COLUMNS):
-    arr = np.array(select(df, columns))
-    shape = (arr.shape[0] - window_size + 1, window_size) + arr.shape[1:]
-    strides = (arr.strides[0],) + arr.strides
-    ret = np.lib.stride_tricks.as_strided(arr, shape=shape, strides=strides)
+def select(df, column_list, start_row=None, num_rows=None):
+    ret = cols(df, column_list)
+    if num_rows is not None or start_row is not None:
+        assert start_row is not None
+        assert num_rows is not None
+        ret = rows(ret, start_row, num_rows)
     return ret
 # endregion
 
+
 if __name__ == '__main__':
-    data = load_historical_data('USDT_BTC', 15)
-    print(generate_windows(data, 0).shape)
-    print(data.columns)
-    print(generate_windows(data, 50).shape)
+    data = load_historical_data('BTC_ETH', 120)
+    print(select(data, ['high', 'low'], 0, 20))
+    # print(data.columns)

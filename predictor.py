@@ -3,7 +3,10 @@ from keras.layers.recurrent import LSTM
 from keras.utils import plot_model
 from keras.models import Sequential, load_model
 import numpy as np
+import logging
 import time
+
+logger = logging.getLogger(__name__)
 
 
 # region Build Model
@@ -19,13 +22,18 @@ def build_model(layers):
     mod.add(Dropout(0.1))
     mod.add(LSTM(layers[2], return_sequences=False))
     mod.add(Dropout(0.1))
-    mod.add(Dense(output_dim=layers[3]))
+    mod.add(Dense(units=layers[3]))
     mod.add(Activation('tanh'))
     start_time = time.clock()
     mod.compile(loss='mse', optimizer='rmsprop')
     print('Model successfully built.')
     print('Compilation Time: {}'.format(time.clock() - start_time))
-    plot_model(mod, show_shapes=True)
+    try:
+        plot_model(mod, show_shapes=True)
+        logger.debug('Saved graph to image.')
+    except:
+        logger.error('''Error saving graph to image. 
+        Make sure you have correctly installed the Graphviz executables and PyDot.''')
     return mod
 # endregion
 
@@ -42,10 +50,8 @@ def train(model, inputs, labels, batch_size=256, epochs=1, validation_split=0.1)
 # region Prediction Functions
 def predict_next_point(mod, inp, feature_indices):
     predicted = mod.predict(inp).squeeze()
-    print(type(predicted))
     if predicted.shape != ():
         predicted = [predicted[i] for i in feature_indices]
-    print('predicted = {}'.format(predicted))
     return predicted
 
 

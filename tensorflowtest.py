@@ -10,16 +10,16 @@ import plotting as plt
 import predictor
 
 # region Setup
-np.random.seed(0)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-warnings.filterwarnings('ignore')
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+warnings.filterwarnings('module')
 # endregion
 
 # region Command Line Parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', help="Currency pair", default='BTC_ETH')
-parser.add_argument('-i', help="Sampling interval", default=30)
+parser.add_argument('-i', help="Sampling interval", default=120)
 parser.add_argument('--epochs', help="Number of training epochs", default=1)
 parser.add_argument('--seqlen', help="Length of sequences to train LSTM on", default=51)
 parser.add_argument('--split', help="Fraction by which to split testing and training data (<1)", default=0.1)
@@ -27,7 +27,7 @@ parser.add_argument('--infeatures', nargs='*', help="Input features to use (can 
 parser.add_argument('--outfeatures', nargs='*', help="Output features to predict", default=['close'])
 parser.add_argument('--load', help="Whether to load model from saved file on disk", default=0)
 args = parser.parse_args()
-print(args)
+logger.debug(args)
 # endregion
 
 # region Hyperparameters
@@ -45,17 +45,17 @@ feature_indices = [input_features.index(o) for o in output_features]
 
 if __name__ == '__main__':
     data = dr.load_historical_data(currency_pair, interval, columns=input_features)
-    x_train, x_test, y_train, y_test = pp.preprocess(data, sequence_length, test_fraction)
+    windows, x_train, x_test, y_train, y_test = pp.preprocess(data, sequence_length, test_fraction)
 
     if not model_from_disk:
         model = predictor.build_model([len(input_features), sequence_length - 1, 100, len(input_features)])
         start = time.time()
         model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
         model.save('model.hdf5')
-        print('training took {} seconds'.format(time.time() - start))
+        logger.info('training took {} seconds'.format(time.time() - start))
     else:
         model = predictor.load_model('model.hdf5')
-        print('Loaded model from disk')
+        logger.info('Loaded model from disk')
 
     start = time.time()
     xs, ax, index = plt.setup_plot(windows, test_fraction)
@@ -63,4 +63,4 @@ if __name__ == '__main__':
         prediction = (predictor.predict_next_point(model, x[None, :], feature_indices))
         plt.update_plot(prediction, index+ix)
     plt.freeze_plot()
-    print('prediction took {} seconds'.format(time.time() - start))
+    logger.info('prediction took {} seconds'.format(time.time() - start))

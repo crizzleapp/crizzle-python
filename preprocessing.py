@@ -1,4 +1,7 @@
+import logging
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # region Pre-Processing
 def normalize(dataset):
@@ -28,6 +31,6 @@ def preprocess(dataset, seq_length, test_fraction):
     data = normalize(dataset)
     windows = generate_windows(data, seq_length)
     x_train, x_test, y_train, y_test = train_test_split(windows, test_fraction)
-    return x_train, x_test, y_train, y_test
+    return windows, x_train, x_test, y_train, y_test
 
 # endregion
