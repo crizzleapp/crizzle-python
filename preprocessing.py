@@ -22,4 +22,12 @@ def train_test_split(dataset, fraction):
     y_train = train[:, -1]
     y_test = test[:, -1]
     return x_train, x_test, y_train, y_test
+
+
+def preprocess(dataset, seq_length, test_fraction):
+    data = normalize(dataset)
+    windows = generate_windows(data, seq_length)
+    x_train, x_test, y_train, y_test = train_test_split(windows, test_fraction)
+    return x_train, x_test, y_train, y_test
+
 # endregion

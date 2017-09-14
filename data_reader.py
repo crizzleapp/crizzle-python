@@ -10,12 +10,14 @@ INTERVAL = 15  # listing interval of dataset to load
 
 
 # region DATA HANDLERS
-def load_historical_data(pair, interval):
+def load_historical_data(pair, interval, columns=None):
     assert isinstance(pair, str)
     assert interval in VALID_INTERVALS
     path = '{}\\{}\\{}.csv'.format(DATA_DIR, interval, pair)
     df = pd.read_csv(path)
     df['UTC'] = pd.to_datetime(df['UTC'])
+    if columns is not None:
+        df = cols(df, columns)
     return df
 
 
