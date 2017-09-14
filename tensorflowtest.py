@@ -2,6 +2,7 @@ import os
 import logging
 import time
 import warnings
+import argparse
 import numpy as np
 
 import data_reader as dr
@@ -9,7 +10,11 @@ import preprocessing as pp
 import plotting as plt
 import predictor
 
-# TODO: API-ify this file
+# region Parameters
+parser = argparse.ArgumentParser()
+parser.add_argument('f', nargs=1)  # File containing dataset
+parser.add_argument('a')
+# endregion
 
 # region Setup
 np.random.seed(0)
