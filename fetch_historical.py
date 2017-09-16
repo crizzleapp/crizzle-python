@@ -3,15 +3,10 @@ historical data for each one to disk at given interval"""
 
 from os import makedirs
 from os.path import exists
-import polonio
+from exchanges import polonio
 import logging
 import pandas as pd
 pd.set_option('display.width', 300)
-
-DATA_DIR = 'G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical'
-CURRENCY_PAIRS = ['USDT_ETH', 'USDT_BTC']
-INTERVAL = 300
-COMPRESS = False
 
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +19,9 @@ def get_all_currency_pairs():
 
 
 def get_historical_data(currency_pair, interval):
-    """Return historical data from exchange for a given currency pair"""
+    """
+    Return historical data from exchange for a given currency pair
+    """
     logger.info('fetching historical data for {}'.format(currency_pair))
     b = exchange.return_chart_data(currency_pair, interval=interval, start=0, end=9999999999)
     return b
@@ -68,10 +65,9 @@ def fetch_histories(currency_pairs, interval, compress=False):
     assert isinstance(currency_pairs, (list, tuple))
     for pair_name in currency_pairs:
         fetch_history(pair_name, interval, compress=compress)
-        # sleep(2)
 
 
 if __name__ == '__main__':
     CURRENCY_PAIRS = list(get_all_currency_pairs())
     for i in reversed([300, 900, 1800, 7200, 14400, 86400]):
-        fetch_histories(CURRENCY_PAIRS, i, compress=COMPRESS)
+        fetch_histories(CURRENCY_PAIRS, i, compress=False)

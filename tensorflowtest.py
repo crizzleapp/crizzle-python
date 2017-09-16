@@ -9,6 +9,8 @@ import preprocessing as pp
 import plotting as plt
 from predictor import Predictor
 
+# TODO: ADD LOGGING TO ALL MODULES
+
 # region Setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ parser.add_argument('--epochs', help="Number of training epochs", default=1)
 parser.add_argument('--seqlen', help="Length of sequences to train LSTM on", default=51)
 parser.add_argument('--split', help="Fraction by which to split testing and training data (<1)", default=0.1)
 parser.add_argument('--infeatures', nargs='*', help="Input features to use (can use multiple)", default=['open'])
-parser.add_argument('--outfeatures', nargs='*', help="Output features to predict", default=['high'])
+parser.add_argument('--outfeatures', nargs='*', help="Output features to predict", default=['close'])
 parser.add_argument('--load', help="Whether to load model from saved file on disk", default=0)
 args = parser.parse_args()
 logger.debug(args)
@@ -45,6 +47,8 @@ features = list(set(input_features + output_features))
 
 
 if __name__ == '__main__':
+    # TODO: move this into main()
+    # TODO: have main() return status codes
     data = dr.load_historical_data(currency_pair, interval, columns=features)
     preprocessor = pp.Preprocessor(data, sequence_length, input_features, output_features, test_fraction)
     windows, x_train, x_test, y_train, y_test = preprocessor.process()

@@ -1,3 +1,8 @@
+"""
+---MODULE NOT IN USE---
+Provides all sorts of plotting methods
+"""
+
 import logging
 import matplotlib.pyplot as plt
 import preprocessing as pp
