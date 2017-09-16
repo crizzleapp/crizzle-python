@@ -7,7 +7,7 @@ import numpy as np
 import data_reader as dr
 import preprocessing as pp
 import plotting as plt
-import predictor
+from predictor import Predictor
 
 # region Setup
 logging.basicConfig(level=logging.INFO)
@@ -23,8 +23,8 @@ parser.add_argument('-i', help="Sampling interval", default=120)
 parser.add_argument('--epochs', help="Number of training epochs", default=1)
 parser.add_argument('--seqlen', help="Length of sequences to train LSTM on", default=51)
 parser.add_argument('--split', help="Fraction by which to split testing and training data (<1)", default=0.1)
-parser.add_argument('--infeatures', nargs='*', help="Input features to use (can use multiple)", default=['close'])
-parser.add_argument('--outfeatures', nargs='*', help="Output features to predict", default=['close'])
+parser.add_argument('--infeatures', nargs='*', help="Input features to use (can use multiple)", default=['open'])
+parser.add_argument('--outfeatures', nargs='*', help="Output features to predict", default=['high'])
 parser.add_argument('--load', help="Whether to load model from saved file on disk", default=0)
 args = parser.parse_args()
 logger.debug(args)
@@ -39,28 +39,25 @@ output_features = args.outfeatures
 test_fraction = args.split
 sequence_length = args.seqlen
 epochs = args.epochs
-feature_indices = [input_features.index(o) for o in output_features]
+
+features = list(set(input_features + output_features))
 # endregion
 
 
 if __name__ == '__main__':
-    data = dr.load_historical_data(currency_pair, interval, columns=input_features)
-    windows, x_train, x_test, y_train, y_test = pp.preprocess(data, sequence_length, test_fraction)
+    data = dr.load_historical_data(currency_pair, interval, columns=features)
+    preprocessor = pp.Preprocessor(data, sequence_length, input_features, output_features, test_fraction)
+    windows, x_train, x_test, y_train, y_test = preprocessor.process()
 
-    if not model_from_disk:
-        model = predictor.build_model([len(input_features), sequence_length - 1, 100, len(input_features)])
-        start = time.time()
-        model.fit(x_train, y_train, batch_size=256, nb_epoch=epochs, validation_split=0.1)
-        model.save('model.hdf5')
-        logger.info('training took {} seconds'.format(time.time() - start))
-    else:
-        model = predictor.load_model('model.hdf5')
-        logger.info('Loaded model from disk')
-
-    start = time.time()
-    xs, ax, index = plt.setup_plot(windows, test_fraction)
-    for ix, x in enumerate(x_test):
-        prediction = (predictor.predict_next_point(model, x[None, :], feature_indices))
-        plt.update_plot(prediction, index+ix)
-    plt.freeze_plot()
-    logger.info('prediction took {} seconds'.format(time.time() - start))
+    predictor = Predictor([len(input_features), sequence_length, 100, len(input_features)],
+                          from_disk=model_from_disk,
+                          filename='model.hdf5')
+    predictor.train(x_train, y_train, batch_size=256, epochs=epochs, validation_split=0.1)
+    #
+    # start = time.time()
+    # xs, ax, index = plt.setup_plot(windows, test_fraction)
+    # for ix, x in enumerate(x_test):
+    #     prediction = (predictor.predict_next_point(x[None, :]))
+    #     plt.update_plot(prediction, index + ix)
+    # plt.freeze_plot()
+    # logger.info('prediction took {} seconds'.format(time.time() - start))

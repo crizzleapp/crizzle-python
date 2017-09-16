@@ -2,7 +2,14 @@ import logging
 import matplotlib.pyplot as plt
 import preprocessing as pp
 
-logger = logging.getLogger(__name__)
+
+class Plotter:
+    def __init__(self, y_train, y_test, predicted=None):
+        self.logger = logging.getLogger(__name__)
+        if predicted is None:
+            self.animated = True
+        self.y_train, self.y_test = y_train, y_test
+
 
 # region Plotting Functions
 def plot_results(predicted_data, full_dataset, fraction):
