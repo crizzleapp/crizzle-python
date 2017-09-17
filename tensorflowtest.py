@@ -4,7 +4,7 @@ import time
 import warnings
 import argparse
 import numpy as np
-import data_reader as dr
+from data_reader import DataReader
 import preprocessing as pp
 import plotting as plt
 from predictor import Predictor
@@ -49,6 +49,7 @@ features = list(set(input_features + output_features))
 if __name__ == '__main__':
     # TODO: move this into main()
     # TODO: have main() return status codes
+    dr = DataReader(['BTC_ETH'], 30)
     data = dr.load_historical_data(currency_pair, interval, columns=features)
     preprocessor = pp.Preprocessor(data, sequence_length, input_features, output_features, test_fraction)
     windows, x_train, x_test, y_train, y_test = preprocessor.process()

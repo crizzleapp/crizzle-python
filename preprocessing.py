@@ -1,18 +1,32 @@
 import logging
+import pandas as pd
 import numpy as np
+from typing import List
+
+# TODO: if output_feature in input_features:
+# inputs = windows[:-1]
+# outputs = windows[-1]
+# TODO: if output_features not in input_features:
+# inputs = windows[:]
+# outputs = output_features[seqlen:]
 
 
 class Preprocessor:
-    def __init__(self, dataset, sequence_length, input_features, output_features, test_fraction):
+    def __init__(self, dataset: pd.DataFrame,
+                 sequence_length: int,
+                 input_features: List[str],
+                 output_features: str,
+                 test_fraction: float):
         """
         Preprocess data and store metadata for preprocessed data
 
         Args:
-            dataset (pandas.DataFrame): full dataset
-            sequence_length (int): length of windows
-            input_features (int): features used as inputs
-            output_features (int): features used as outputs
-            test_fraction (float): fraction of data to use for validation
+            dataset (pandas.DataFrame): Full dataset
+            sequence_length (int): Length of windows
+            input_features (list[str]): Features used as inputs
+            output_features (str): Feature used as outputs.
+                We make the assumption that only one feature is used as the output.
+            test_fraction (float): Fraction of data to use for validation
 
         """
         self.logger = logging.getLogger(__name__)
