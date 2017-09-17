@@ -4,16 +4,17 @@ import numpy as np
 from typing import List
 
 # TODO: if output_feature in input_features:
-# inputs = windows[:-1]
-# outputs = windows[-1]
+# inputs = windows[:-1] 3d
+# outputs = windows[-1] 2d
 # TODO: if output_features not in input_features:
-# inputs = windows[:]
-# outputs = output_features[seqlen:]
+# inputs = windows[:] 3d
+# outputs = output_features[seqlen:] 2d
 
 
 class Preprocessor:
     def __init__(self, dataset: pd.DataFrame,
-                 sequence_length: int,
+                 input_sequence_length: int,
+                 output_sequence_length: int,
                  input_features: List[str],
                  output_features: str,
                  test_fraction: float):
@@ -22,16 +23,16 @@ class Preprocessor:
 
         Args:
             dataset (pandas.DataFrame): Full dataset
-            sequence_length (int): Length of windows
+            input_sequence_length (int): Length of input windows
+            output_sequence_length (int): Length of output windows
             input_features (list[str]): Features used as inputs
             output_features (str): Feature used as outputs.
                 We make the assumption that only one feature is used as the output.
             test_fraction (float): Fraction of data to use for validation
-
         """
         self.logger = logging.getLogger(__name__)
         self.dataset = dataset
-        self.sequence_length = sequence_length
+        self.sequence_length = input_sequence_length
         self.input_features = input_features
         self.output_features = output_features
         self.test_fraction = test_fraction

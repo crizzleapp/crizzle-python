@@ -7,6 +7,8 @@ import logging
 import time
 
 
+# TODO: implement many-to-many prediction
+
 class Predictor:
     """
     Keras-based price predictor
@@ -37,11 +39,8 @@ class Predictor:
         mod = Sequential()
         mod.add(LSTM(layers[1], input_shape=(layers[1], layers[0]),
                      return_sequences=True))
-        mod.add(Dropout(0.1))
-        mod.add(LSTM(layers[2], return_sequences=False))
-        mod.add(Dropout(0.1))
         mod.add(Dense(units=layers[3]))
-        mod.add(Activation('tanh'))
+
         start_time = time.clock()
         mod.compile(loss='mse', optimizer='rmsprop')
         print('Model built successfully.')
