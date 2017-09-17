@@ -49,7 +49,6 @@ coverage.xml
 *.mo
 *.pot
 
-# Django stuff:
 *.log
 
 # Sphinx documentation
@@ -60,21 +59,9 @@ target/
 
 *.bz2
 
-trump_tweets/
-
-\.idea/dictionaries/
-
-\.idea/
-
-reddit_data/
+*.key
 
 *.pkl
-
-ckpt/
-
-GoogleNews-vectors-negative300\.bin\.gz
-
-glove\.6B\.300d\.txt
 
 *.key
 
