@@ -19,15 +19,15 @@ warnings.filterwarnings('module')
 # region Command Line Parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', help="Currency pair", default='BTC_ETH')
-parser.add_argument('-i', help="Sampling interval", default=120)
-parser.add_argument('--epochs', help="Number of training epochs", default=1)
-parser.add_argument('--seqlen', help="Length of sequences to train LSTM on", default=51)
-parser.add_argument('--split', help="Fraction by which to split testing and training data (<1)", default=0.1)
+parser.add_argument('-i', help="Sampling interval", type=int, default=120)
+parser.add_argument('--epochs', help="Number of training epochs", type=int, default=1)
+parser.add_argument('--seqlen', help="Length of sequences to train LSTM on", type=int, default=51)
+parser.add_argument('--split', help="Fraction by which to split testing and training data (<1)", type=float, default=0.1)
 parser.add_argument('--infeatures', nargs='*', help="Input features to use (can use multiple)", default=['close'])
 parser.add_argument('--outfeatures', nargs='*', help="Output features to predict", default=['close'])
 parser.add_argument('--load', help="Whether to load model from saved file on disk", default=0)
 args = parser.parse_args()
-logger.debug(args)
+logger.info(args)
 # endregion
 
 # region Hyperparameters

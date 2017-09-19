@@ -1,14 +1,18 @@
 import logging
 import numpy as np
 import pandas as pd
+import os
 np.set_printoptions()
 pd.set_option('display.width', 300)
-
 logger = logging.getLogger(__name__)
+
+DATA_DIRECTORY = 'data\\historical'
+
+WORKING_DIR = os.path.dirname(os.path.realpath(__file__))
 DESIRED_COLUMNS = ('open', 'volume')
-VALID_INTERVALS = [i/60 for i in [300, 900, 1800, 7200, 14400, 86400]]
-DATA_DIR = 'G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical'
-INTERVAL = 15  # listing interval of dataset to load
+VALID_INTERVALS = [5, 15, 30, 120, 240, 1440]
+DATA_DIR = os.path.join(WORKING_DIR, DATA_DIRECTORY)
+print(DATA_DIR)
 
 
 # region DATA HANDLERS
