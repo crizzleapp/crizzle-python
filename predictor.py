@@ -30,21 +30,20 @@ class Predictor:
         self.model = load_model(filename)
         self.logger.info('Loaded model from disk.')
 
-    def build(self, layers):
+    def build(self, seqlen):
         """
             Build model given layer sizes
             :param layers: [data dimensions, sequence length, LSTM layer 2 size, fully connected layer size]
             :return: keras model
             """
         mod = Sequential()
-        mod.add(LSTM(layers[1], input_shape=(layers[1], layers[0]),
+        mod.add(LSTM(seqlen, input_shape=(seqlen, 1),
                      return_sequences=True))
-        mod.add(Dense(units=layers[3]))
 
         start_time = time.clock()
         mod.compile(loss='mse', optimizer='rmsprop')
-        print('Model built successfully.')
-        print('Build time: {}'.format(time.clock() - start_time))
+        self.logger.info('Model built successfully.')
+        self.logger.debug('Build time: {}'.format(time.clock() - start_time))
         try:
             plot_model(mod, show_shapes=True)
             self.logger.debug('Saved graph to image.')

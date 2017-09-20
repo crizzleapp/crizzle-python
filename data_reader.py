@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 import numpy as np
@@ -8,8 +9,9 @@ from os.path import exists
 import exchanges
 pd.set_option('display.width', 300)
 
+WORKING_DIR = os.path.dirname(os.path.realpath(__file__))
 logging.basicConfig(level=logging.DEBUG)
-DATA_DIR = 'G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical'
+DATA_DIR = 'data\\historical'
 
 
 class DataReader:
@@ -17,7 +19,11 @@ class DataReader:
     Class that handles all data loading and fetching operations.
     You should only have one instance of this class in your bot script.
     """
-    def __init__(self, pairs: List[str], interval: int, data_dir: str=DATA_DIR, exchange: str='poloniex'):
+    def __init__(self,
+                 pairs: List[str],
+                 interval: int,
+                 data_dir: str=DATA_DIR,
+                 exchange: str='poloniex'):
         """
         Args:
             pairs (list[str]): List of currency pairs to load
@@ -30,7 +36,7 @@ class DataReader:
         assert interval in self.valid_intervals
         self.pairs = pairs
         self.interval = interval
-        self.data_dir = data_dir
+        self.data_dir = os.path.join(WORKING_DIR, DATA_DIR)
         self.exchange = exchanges.get_exchange(exchange).ExtendedAPI()
 
         self.dataframes = self.load_pairs_from_disk()
@@ -49,7 +55,7 @@ class DataReader:
             interval (int): sampling interval
 
         Returns:
-            pandas.DataFrame: DataFrame containing selected features
+            dict: dictionary of DataFrames {pair: dataframe}
         """
         # NOTE: Does not isolate columns
         dataframes = {}
@@ -101,6 +107,7 @@ class DataReader:
 
 def main():
     reader = DataReader(['BTC_ETH'], 5, DATA_DIR)
+    print(reader.pairs)
 
 
 if __name__ == '__main__':
