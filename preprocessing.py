@@ -65,7 +65,7 @@ class Preprocessor:
         shape = (arr.shape[0] - window_size + 1, window_size) + arr.shape[1:]
         strides = (arr.strides[0],) + arr.strides
         windows = np.lib.stride_tricks.as_strided(arr, shape=shape, strides=strides)
-        return windows
+        return windows[:, None, :]
 
     @staticmethod
     def split(sequence, fraction):
@@ -87,10 +87,15 @@ class Preprocessor:
         inputs = self.dataframe[self.input_features]  # extract relevant column
         windows = self.generate_windows(inputs, self.sequence_length)
         logger.debug('Windows shape: {}'.format(windows.shape))
-        xs = windows[:-1, None, :]
-        ys = windows[1:, None, :]
+
+        xs = windows[:-1]
+        ys = windows[1:]
         logger.debug('Xs shape: {}'.format(xs.shape))
         logger.debug('Ys shape: {}'.format(ys.shape))
+
         x_train, x_test = self.split(xs, self.test_fraction)
+        logger.debug('x_train shape: {}'.format(x_train.shape))
+        logger.debug('x_test shape: {}'.format(x_test.shape))
+
         y_train, y_test = self.split(ys, self.test_fraction)
         return x_train, x_test, y_train, y_test

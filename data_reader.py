@@ -22,7 +22,7 @@ class DataReader:
     def __init__(self,
                  pairs: List[str],
                  interval: int,
-                 data_dir: str=DATA_DIR,
+                 data_dir: str,
                  exchange: str='poloniex'):
         """
         Args:
@@ -36,7 +36,7 @@ class DataReader:
         assert interval in self.valid_intervals
         self.pairs = pairs
         self.interval = interval
-        self.data_dir = os.path.join(WORKING_DIR, DATA_DIR)
+        self.data_dir = os.path.join(WORKING_DIR, data_dir)
         self.exchange = exchanges.get_exchange(exchange).ExtendedAPI()
 
         self.dataframes = self.load_pairs_from_disk()
@@ -49,10 +49,6 @@ class DataReader:
     def load_pairs_from_disk(self) -> dict:
         """
         Load the appropriate CSV file into a pandas DataFrame
-
-        Args:
-            pair (str): currency pair to load
-            interval (int): sampling interval
 
         Returns:
             dict: dictionary of DataFrames {pair: dataframe}
