@@ -15,10 +15,11 @@ class Predictor:
     """
     Keras-based price predictor
     """
-    def __init__(self, layers, from_disk=False, filename=None):
-        self.layers = layers
+    def __init__(self, sequence_length: int, from_disk: bool=False, filename=None):
+        self.sequence_length = sequence_length
         self.from_disk = from_disk
         self.filename = filename
+        self.model = None
 
         if from_disk:
             try:
@@ -27,36 +28,37 @@ class Predictor:
                 logger.error('INVALID FILENAME')
                 raise e
         else:
-            self.model = self.build(self.layers)
+            self.build(self.sequence_length)
         self.plot_model()
 
-    def load_model_from_disk(self, filename):
+    def load_model_from_disk(self, filename: str) -> None:
         self.model = load_model(filename)
-        self.logger.info('Loaded model from disk.')
+        logger.info('Loaded model from disk.')
 
-    def build(self, seqlen):
+    def build(self, seqlen: int) -> None:
         """
-            Build model given layer sizes
-            :param layers: [data dimensions, sequence length, LSTM layer 2 size, fully connected layer size]
-            :return: keras model
-            """
-        mod = Sequential()
-        mod.add(LSTM(seqlen, input_shape=(1, seqlen),
-                     return_sequences=True))
+        Build prediction model
+
+        Args:
+            seqlen (int): length of input/output sequences in data
+        """
+        model = Sequential()
+        model.add(LSTM(seqlen, input_shape=(1, seqlen),
+                       return_sequences=True))
 
         start_time = time.clock()
-        mod.compile(loss='mse', optimizer='rmsprop')
+        model.compile(loss='mse', optimizer='rmsprop')
         logger.info('Model built successfully.')
         logger.debug('Build time: {}'.format(time.clock() - start_time))
-        return mod
+        self.model = model
 
     def plot_model(self):
         try:
             plot_model(self.model, show_shapes=True)
             logger.debug('Saved graph to image.')
-        except:
-            logger.error('''Error saving graph to image. 
-                Make sure you have correctly installed the Graphviz executables and PyDot.''')
+        except ImportError:
+            logger.error('''Error saving graph to image.
+            Make sure you have correctly installed the Graphviz executables and PyDot.''')
 
     def train(self, inputs, labels, batch_size=256, epochs=1, validation_split=0.1):
         start = time.time()
@@ -65,12 +67,12 @@ class Predictor:
         logger.info('Model saved to disk.')
         logger.info('training took {} seconds'.format(time.time() - start))
 
-    def predict_next_point(self, inp, blind=True):
-        predicted = self.model.predict(inp).squeeze()
+    def predict_next(self, inp):
+        predicted = self.model.predict(inp, batch_size=256).squeeze()
         return predicted
 
-    def predict_sequence_full(self, inp, feature_indices):
+    def predict_sequence_full(self, inp):
         predicted = []
         for i in inp:
-            predicted.append(self.predict_next_point(i, feature_indices))
+            predicted.append(self.predict_next(i))
         return np.array(predicted).squeeze()
