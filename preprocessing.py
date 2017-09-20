@@ -86,17 +86,11 @@ class Preprocessor:
             """
         inputs = self.dataframe[self.input_features]  # extract relevant column
         windows = self.generate_windows(inputs, self.sequence_length)
-        xs = windows[:-1]
-        ys = windows[1:]
-        logger.debug('Xs shape: {},\nYs shape: {}'.format(xs.shape, ys.shape))
+        logger.debug('Windows shape: {}'.format(windows.shape))
+        xs = windows[:-1, None, :]
+        ys = windows[1:, None, :]
+        logger.debug('Xs shape: {}'.format(xs.shape))
+        logger.debug('Ys shape: {}'.format(ys.shape))
         x_train, x_test = self.split(xs, self.test_fraction)
         y_train, y_test = self.split(ys, self.test_fraction)
         return x_train, x_test, y_train, y_test
-        # self.inputs = np.array(self.dataset[self.input_features])
-        # self.outputs = np.array(self.dataset[self.input_features])
-        # inputs, outputs = self.normalize(self.inputs), self.normalize(self.outputs)
-        # self.xs = self.generate_windows(inputs, self.sequence_length)
-        # self.ys = outputs[self.sequence_length-1:]
-        # self.x_train, self.x_test = self.train_test_split(self.xs, self.test_fraction)
-        # self.y_train, self.y_test = self.train_test_split(self.ys, self.test_fraction)
-        # return self.xs, self.x_train, self.x_test, self.y_train, self.y_test

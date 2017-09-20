@@ -21,11 +21,11 @@ warnings.filterwarnings('module')
 # region Hyperparameters
 model_from_disk = False
 currency_pair = 'BTC_ETH'
-interval = 120
+interval = 5
 input_feature = 'open'
 test_fraction = 0.1
-sequence_length = 50
-epochs = 1
+sequence_length = 200
+epochs = 5
 
 # endregion
 
@@ -33,15 +33,15 @@ epochs = 1
 if __name__ == '__main__':
     # TODO: move this into main()
     # TODO: have main() return status codes
-    dr = DataReader(['BTC_ETH'], 30)
-    data = dr.dataframes['BTC_ETH']
+    dr = DataReader([currency_pair], interval)
+    data = dr.dataframes[currency_pair]
     preprocessor = pp.Preprocessor(data, sequence_length, input_feature, test_fraction)
     x_train, x_test, y_train, y_test = preprocessor.process(sequence_length)
 
-    predictor = Predictor(sequence_length - 1,
+    predictor = Predictor(sequence_length,
                           from_disk=model_from_disk,
                           filename='model.hdf5')
-    predictor.train(x_train, y_train, batch_size=256, epochs=epochs, validation_split=0.1)
+    predictor.train(x_train, y_train, batch_size=32, epochs=epochs, validation_split=0.1)
 
     # start = time.time()
     # xs, ax, index = plt.setup_plot(windows, test_fraction)
