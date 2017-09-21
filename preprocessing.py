@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 
 class Preprocessor:
     def __init__(self,
-                 dataframe: pd.DataFrame,
-                 sequence_length: int,
-                 input_features: str,
-                 test_fraction: float):
+                 dataframe: pd.DataFrame=pd.DataFrame(),
+                 sequence_length: int=50,
+                 input_features: str='',
+                 test_fraction: float=0.1):
         """
         Preprocess data and store metadata for preprocessed data
 
@@ -34,8 +34,10 @@ class Preprocessor:
         self.input_features = input_features
         self.test_fraction = test_fraction
 
+        self.inputs = self.dataframe[self.input_features]
+
     @staticmethod
-    def normalize(dataset):
+    def normalize(dataset: np.ndarray):
         """
             Normalize the mean of each feature/column set to 0
 
@@ -50,7 +52,7 @@ class Preprocessor:
         return dataset - means
 
     @staticmethod
-    def generate_windows(arr, window_size):
+    def sliding_window(arr: np.ndarray, window_size: int):
         """
         Create a list of windows by sliding over the input array
 
@@ -68,11 +70,31 @@ class Preprocessor:
         return windows[:, None, :]
 
     @staticmethod
-    def split(sequence, fraction):
+    def chunkify(arr: np.ndarray, chunk_size: int):
+        """
+        Divide an array into sub-arrays of size N
+        NOTE: If chunk size does not exactly divide the array, the array is trimmed at the head.
+
+        Args:
+            arr (np.ndarray): Array to divide
+            chunk_size (int): Size of each chunk
+
+        Returns:
+            np.ndarray: Array of sub-arrays, head-trimmed if necessary
+        """
+        arr = arr[len(arr) % chunk_size:]
+        num_chunks = len(arr)/chunk_size
+        logger.debug('Splitting array into {} chunks'.format(num_chunks))
+        return np.asarray(np.array_split(arr, num_chunks))[:, None, :]
+
+    @staticmethod
+    def split(sequence: np.ndarray, fraction: float):
         train, test = np.split(sequence, [int((1 - fraction) * len(sequence))])
         return train, test
 
-    def process(self, sequence_length: int) -> tuple:
+    def process(self,
+                sequence_length: int,
+                normalize=False) -> tuple:
         """
             Turn a dataframe into a sequence of normalized window-label pairs,
             divided into training and testing sets.
@@ -84,18 +106,28 @@ class Preprocessor:
                 tuple[np.ndarray]: x_train, x_test, y_train, y_test
 
             """
-        inputs = self.dataframe[self.input_features]  # extract relevant column
-        windows = self.generate_windows(inputs, self.sequence_length)
-        logger.debug('Windows shape: {}'.format(windows.shape))
+        if normalize:
+            self.inputs = self.normalize(self.inputs)
+        chunks = self.chunkify(self.inputs, self.sequence_length)
+        logger.debug('Raw data shape: {}'.format(self.inputs.shape))
+        logger.debug('Windows shape: {}'.format(chunks.shape))
 
-        xs = windows[:-1]
-        ys = windows[1:]
+        xs = chunks[:-1]
+        ys = chunks[1:]
         logger.debug('Xs shape: {}'.format(xs.shape))
         logger.debug('Ys shape: {}'.format(ys.shape))
 
         x_train, x_test = self.split(xs, self.test_fraction)
-        logger.debug('x_train shape: {}'.format(x_train.shape))
-        logger.debug('x_test shape: {}'.format(x_test.shape))
 
         y_train, y_test = self.split(ys, self.test_fraction)
         return x_train, x_test, y_train, y_test
+
+
+def main():
+    arr = np.sin(np.arange(1000))
+    pp = Preprocessor()
+    print(pp.chunkify(arr, 50).shape)
+
+
+if __name__=='__main__':
+    main()

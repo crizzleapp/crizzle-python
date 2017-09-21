@@ -1,5 +1,6 @@
 from keras.layers.core import Dense, Activation, Dropout
 from keras.layers.recurrent import LSTM
+from keras.layers.wrappers import TimeDistributed
 from keras.utils import plot_model
 from keras.models import Sequential, load_model
 import numpy as np
@@ -60,9 +61,9 @@ class Predictor:
             logger.error('''Error saving graph to image.
             Make sure you have correctly installed the Graphviz executables and PyDot.''')
 
-    def train(self, inputs, labels, batch_size=256, epochs=1, validation_split=0.1):
+    def train(self, inputs, labels, validation_data, batch_size=256, epochs=1):
         start = time.time()
-        self.model.fit(inputs, labels, batch_size=batch_size, epochs=epochs, validation_split=validation_split)
+        self.model.fit(inputs, labels, batch_size=batch_size, epochs=epochs, validation_data=validation_data)
         self.model.save('model.hdf5')
         logger.info('Model saved to disk.')
         logger.info('training took {} seconds'.format(time.time() - start))

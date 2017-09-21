@@ -3,9 +3,10 @@ import os
 import time
 import warnings
 
-import preprocessing as pp
+from preprocessing import Preprocessor
 from data_reader import DataReader
 from predictor import Predictor
+from plotting import Plotter
 
 # TODO: ADD LOGGING TO ALL MODULES
 
@@ -18,13 +19,13 @@ warnings.filterwarnings('module')
 
 # region Hyperparameters
 data_dir = 'data\\historical'
-model_from_disk = True
+model_from_disk = False
 currency_pair = 'BTC_ETH'
-interval = 5
+interval = 120
 input_feature = 'open'
 test_fraction = 0.1
-sequence_length = 50
-epochs = 5
+sequence_length = 200
+epochs = 200
 
 # endregion
 
@@ -34,17 +35,21 @@ if __name__ == '__main__':
     # TODO: have main() return status codes
     dr = DataReader([currency_pair], interval, data_dir)
     data = dr.dataframes[currency_pair]
-    preprocessor = pp.Preprocessor(data, sequence_length, input_feature, test_fraction)
-    x_train, x_test, y_train, y_test = preprocessor.process(sequence_length)
+    pp = Preprocessor(data, sequence_length, input_feature, test_fraction)
+    plt = Plotter()
+
+    true_train, true_test = pp.split(pp.inputs, test_fraction)
+    x_train, x_test, y_train, y_test = pp.process(sequence_length)
 
     predictor = Predictor(sequence_length,
                           from_disk=model_from_disk,
                           filename='model.hdf5')
     if not model_from_disk:
-        predictor.train(x_train, y_train, batch_size=256, epochs=epochs, validation_split=0.1)
+        predictor.train(x_train, y_train, (x_test, y_test), batch_size=256, epochs=epochs)
     start = time.time()
-    print(predictor.predict_next(x_test))
+    predictions = predictor.predict_next(x_test)
     print('Prediction time: {}'.format(time.time() - start))
+    plt.plot_sequences(true_train, true_test, predictions)
 
     # xs, ax, index = plt.setup_plot(windows, test_fraction)
     # for ix, x in enumerate(x_test):
