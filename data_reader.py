@@ -4,8 +4,6 @@ import logging
 import numpy as np
 import pandas as pd
 from typing import List
-from os import makedirs
-from os.path import exists
 import exchanges
 pd.set_option('display.width', 300)
 

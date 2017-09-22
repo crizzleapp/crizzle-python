@@ -46,6 +46,12 @@ class Predictor:
         model = Sequential()
         model.add(LSTM(seqlen, input_shape=(1, seqlen),
                        return_sequences=True))
+        model.add(Dropout(0.1))
+        model.add(LSTM(seqlen,
+                       return_sequences=True))
+        model.add(Dropout(0.1))
+        model.add(LSTM(seqlen,
+                       return_sequences=True))
 
         start_time = time.clock()
         model.compile(loss='mse', optimizer='rmsprop')
@@ -56,7 +62,7 @@ class Predictor:
     def plot_model(self):
         try:
             plot_model(self.model, show_shapes=True)
-            logger.debug('Saved graph to image.')
+            logger.info('Saved graph to image.')
         except ImportError:
             logger.error('''Error saving graph to image.
             Make sure you have correctly installed the Graphviz executables and PyDot.''')

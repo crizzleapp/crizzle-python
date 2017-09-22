@@ -3,6 +3,9 @@ import os
 import time
 import warnings
 
+import numpy as np
+import pandas as pd
+
 from preprocessing import Preprocessor
 from data_reader import DataReader
 from predictor import Predictor
@@ -34,12 +37,12 @@ if __name__ == '__main__':
     # TODO: move this into main()
     # TODO: have main() return status codes
     dr = DataReader([currency_pair], interval, data_dir)
-    data = dr.dataframes[currency_pair]
+    # data = dr.dataframes[currency_pair]
+    data = pd.DataFrame(np.sin(np.arange(0, 100, 0.01)), columns=[input_feature])
     pp = Preprocessor(data, sequence_length, input_feature, test_fraction)
     plt = Plotter()
 
-    true_train, true_test = pp.split(pp.inputs, test_fraction)
-    x_train, x_test, y_train, y_test = pp.process(sequence_length)
+    x_train, x_test, y_train, y_test = pp.process(sequence_length, normalize=True)
 
     predictor = Predictor(sequence_length,
                           from_disk=model_from_disk,
@@ -49,7 +52,7 @@ if __name__ == '__main__':
     start = time.time()
     predictions = predictor.predict_next(x_test)
     print('Prediction time: {}'.format(time.time() - start))
-    plt.plot_sequences(true_train, true_test, predictions)
+    plt.plot_sequences(pp.raw_y_test, predictions)
 
     # xs, ax, index = plt.setup_plot(windows, test_fraction)
     # for ix, x in enumerate(x_test):

@@ -29,12 +29,17 @@ class Preprocessor:
                 We make the assumption that only one feature is used as the output.
             test_fraction (float): Fraction of data to use for validation
         """
-        self.dataframe = dataframe
+        self.dataframe = dataframe[1:]  # remove initial large value
         self.sequence_length = sequence_length
         self.input_features = input_features
         self.test_fraction = test_fraction
 
         self.inputs = self.dataframe[self.input_features]
+        self.inputs_normalized = self.normalize(self.inputs)
+
+    @property
+    def raw_y_test(self):
+        return self.split(self.inputs, self.test_fraction)[1]
 
     @staticmethod
     def normalize(dataset: np.ndarray):
@@ -107,9 +112,11 @@ class Preprocessor:
 
             """
         if normalize:
-            self.inputs = self.normalize(self.inputs)
-        chunks = self.chunkify(self.inputs, self.sequence_length)
-        logger.debug('Raw data shape: {}'.format(self.inputs.shape))
+            inputs = self.inputs_normalized
+        else:
+            inputs = self.inputs
+        chunks = self.chunkify(inputs, self.sequence_length)
+        logger.debug('Raw data shape: {}'.format(inputs.shape))
         logger.debug('Windows shape: {}'.format(chunks.shape))
 
         xs = chunks[:-1]
@@ -118,7 +125,6 @@ class Preprocessor:
         logger.debug('Ys shape: {}'.format(ys.shape))
 
         x_train, x_test = self.split(xs, self.test_fraction)
-
         y_train, y_test = self.split(ys, self.test_fraction)
         return x_train, x_test, y_train, y_test
 

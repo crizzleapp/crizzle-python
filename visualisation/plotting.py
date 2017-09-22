@@ -16,33 +16,31 @@ class Plotter:
 
     # region Plotting Functions
     @staticmethod
-    def plot_sequences(true_train: np.ndarray,
-                       true_test: np.ndarray,
-                       prediction_sequences: np.ndarray) -> None:
+    def plot_sequences(test_ys: np.ndarray,
+                       predictions: np.ndarray) -> None:
         """
         Plot the training and testing data, along with the sequence of predictions.
+
         Args:
-            true_train (np.ndarray): Training set labels
+            test_ys (np.ndarray): Training set labels
             true_test (np.ndarray): Testing set labels
-            prediction_sequences (np.ndarray): List of predicted sequences
-
-        Returns:
-
+            predictions (np.ndarray): List of predicted sequences
         """
-        logger.debug('y_train shape: {}'.format(true_test.shape))
+        logger.debug('true data shape: {}'.format(test_ys.shape))
+        logger.debug('prediction shape: {}'.format(predictions.shape))
         fig = figure(title='Predictions', plot_width=1300, plot_height=800, active_scroll='wheel_zoom')
 
-        x_train = np.arange(0, len(true_train))
-        x_test = np.arange(len(true_train), len(true_train) + len(true_test))
-        sequence_length = len(prediction_sequences[0])
+        x = np.arange(len(test_ys))
+        sequence_length = len(predictions[0])
 
-        fig.line(x_train, true_train)
-        fig.line(x_test, true_test, line_color='orange')
+        fig.line(x, test_ys, line_color='orange')
 
-        for i in range(len(prediction_sequences)):
-            start_index = len(true_train) + ((i) * sequence_length)
-            end_index = start_index + sequence_length
-            fig.line(range(start_index, end_index), prediction_sequences[i], line_color='green')
+        print(predictions.shape)
+        for i in range(len(predictions)):
+            # start_index = len(true_data) + ((i) * sequence_length)
+            start_index = 0
+            end_index = start_index + ((i + 1) * sequence_length)
+            fig.line(range(start_index, end_index), predictions[i], line_color='green')
 
         show(fig)
     # endregion
