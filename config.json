@@ -1,0 +1,6 @@
+{
+  "valid_intervals": [5, 15, 30, 120, 240, 1440],
+  "exchanges": ["simulation"],
+  "data_location": "G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical",
+  "pairs": ["BTC_ETH"]
+}
