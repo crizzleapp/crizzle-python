@@ -12,7 +12,6 @@ import polonio
 pd.set_option('display.width', 300)
 
 logging.getLogger('urllib3').setLevel(logging.WARNING)
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 exchange = polonio.Environment()
 

@@ -1,11 +1,9 @@
 import logging
 import time
 import pandas as pd
-from app import environments
 from data_handler import DataHandler
 from environments.base import Environment
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -65,8 +63,11 @@ class RateDataHandler(DataHandler):
         """
         Load and store the appropriate CSV files as pandas DataFrames.
 
-        :param pair_intervals: nested dictionary of the format {pair: [interval1, interval2], pair2: [interval1]}
-        :returns: None
+        Args:
+            pair_intervals: nested dictionary of the format {pair: [interval1, interval2], pair2: [interval1]}
+
+        Returns:
+            None
         """
         try:
             assert self._data_dir is not None

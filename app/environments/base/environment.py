@@ -11,7 +11,6 @@ from base64 import b64decode, b64encode
 from hashlib import sha256, sha512
 from singleton import Singleton
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 

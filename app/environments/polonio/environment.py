@@ -52,3 +52,6 @@ class Environment(base.Environment):
 
     def get_current_rate(self, pair: str):
         pass
+
+    def get_historical_prices(self, pair: str, interval: int):
+        pass

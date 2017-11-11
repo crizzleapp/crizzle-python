@@ -4,7 +4,6 @@ import environments
 import pandas as pd
 from singleton import Singleton
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 

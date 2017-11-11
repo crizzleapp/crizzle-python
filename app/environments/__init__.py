@@ -10,4 +10,4 @@ def get_environment(exchange_name):
                  'kraken': krakenex,
                  'shapeshift': shapeshiftio,
                  'simulation': simulation}
-    return exchanges[exchange_name]
+    return exchanges[exchange_name].Environment()

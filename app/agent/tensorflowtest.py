@@ -14,7 +14,6 @@ from preprocessing import Preprocessor
 # TODO: ADD LOGGING TO ALL MODULES
 
 # region Setup
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 warnings.filterwarnings('module')

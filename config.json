@@ -1,6 +1,7 @@
 {
-  "valid_intervals": [5, 15, 30, 120, 240, 1440],
   "exchanges": ["simulation"],
-  "data_location": "G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data\\historical",
-  "pairs": ["BTC_ETH"]
+  "historical_exchange": "poloniex",
+  "project_directory": "G:\\Documents\\Python Scripts\\Crypto_Algotrader",
+  "pairs": ["BTC_ETH"],
+  "num_logs": 1
 }

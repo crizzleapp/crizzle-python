@@ -4,7 +4,6 @@ import logging
 from urllib.parse import urlencode
 from urllib.request import urlopen, Request
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
