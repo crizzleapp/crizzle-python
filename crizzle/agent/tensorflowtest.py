@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from app.data_handlers import RateDataHandler
+from crizzle.data_handlers import RateDataHandler
 from plotting import Plotter
 from predictor import Predictor
 from preprocessing import Preprocessor

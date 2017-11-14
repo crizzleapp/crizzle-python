@@ -1,8 +1,8 @@
 import logging
 import time
 import pandas as pd
-from data_handler import DataHandler
-from environments.base import Environment
+from .data_handler import DataHandler
+from ..environments.base import Environment
 
 logger = logging.getLogger(__name__)
 

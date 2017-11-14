@@ -2,9 +2,9 @@ import os
 import json
 import logging
 import datetime
-import environments
-import data_handlers
-import agent
+from crizzle import environments
+from crizzle import data_handlers
+from crizzle import agent
 
 # region Read Config
 with open('config.json') as config_file:
@@ -13,15 +13,15 @@ with open('config.json') as config_file:
     exchanges = config['exchanges']
     project_directory = config['project_directory']
     historical_exchange = config['historical_exchange']
-    num_logs = config['num_logs']
+    max_num_logs = config['max_num_logs']
 # endregion
 
 
-# region Logging setup
+# region Logging
 log_directory = project_directory + "\\data\\log"
 existing_logs = sorted([filename for filename in os.listdir(log_directory) if filename.endswith('.txt')])
 
-while len(existing_logs) >= num_logs:
+while len(existing_logs) >= max_num_logs:
     os.remove(log_directory + "\\" + existing_logs[0])
     existing_logs = sorted([filename for filename in os.listdir(log_directory) if filename.endswith('.txt')])
 
@@ -33,13 +33,13 @@ logging.basicConfig(level=logging.DEBUG, format=log_format, handlers=log_handler
 
 
 # region Environments
-env = environments.simulation.Environment()
+env = environments.make('simulation')
 # endregion
 
 
-# region Data Handler
+# region Data Handlers
 historical = data_handlers.RateDataHandler(data_dir=project_directory + "\\data\\historical",
-                                           exchange=environments.get_environment(historical_exchange))
+                                           exchange=environments.make(historical_exchange))
 # endregion
 
 

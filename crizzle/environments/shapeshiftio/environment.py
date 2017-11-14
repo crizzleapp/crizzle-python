@@ -1,8 +1,9 @@
-import base
 import json
 import logging
 from urllib.parse import urlencode
 from urllib.request import urlopen, Request
+
+from crizzle.environments import base
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,7 @@ class Environment(base.Environment):
         else:
             return returned
 
-    def get_all_positions(self) -> list:
-        pass
-
-    def place_order(self):
+    def get_positions(self) -> list:
         pass
 
     def get_current_rate(self, pair: str):

@@ -1,5 +1,5 @@
 import logging
-import base
+from crizzle.environments import base
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +14,11 @@ class Environment(base.Environment):
 
     def query_public(self, method, data=None, params=None, headers=None):
         logger.debug('METHOD: {}'.format(method))
-        url = self.uri + '/' + self.api_version + '/public/' + method
+        url = self._uri + '/' + self.api_version + '/public/' + method
         return super(Environment, self).query_public(url, data=data, params=params, headers=headers)
 
     def query_private(self, method, data=None, params=None, headers=None):
-        url = self.uri + '/' + self.api_version + '/private/' + method
+        url = self._uri + '/' + self.api_version + '/private/' + method
         return super(Environment, self).query_private(url, data=data, params=params, headers=headers)
     
     def hashify(self, url=None, data=None):
@@ -30,10 +30,7 @@ class Environment(base.Environment):
         else:
             return super(Environment, self).parse_returned(returned['result'])
 
-    def get_all_positions(self) -> list:
-        pass
-
-    def place_order(self):
+    def get_positions(self) -> list:
         pass
 
     def get_current_rate(self, pair: str):

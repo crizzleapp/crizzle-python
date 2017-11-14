@@ -3,5 +3,5 @@
   "historical_exchange": "poloniex",
   "project_directory": "G:\\Documents\\Python Scripts\\Crypto_Algotrader",
   "pairs": ["BTC_ETH"],
-  "num_logs": 1
+  "max_num_logs": 3
 }

@@ -1,6 +1,6 @@
 import logging
 import time
-import environments
+from .. import environments
 import pandas as pd
 from singleton import Singleton
 
