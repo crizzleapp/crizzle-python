@@ -11,7 +11,7 @@ import requests
 
 from crizzle.agent import Agent
 from crizzle.environments.base.agentInterface import Space, Action, Observation
-from singleton import Singleton
+from crizzle.singleton import Singleton
 
 logger = logging.getLogger(__name__)
 

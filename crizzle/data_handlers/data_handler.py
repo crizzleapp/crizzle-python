@@ -1,8 +1,6 @@
 import logging
-import time
-from .. import environments
-import pandas as pd
-from singleton import Singleton
+
+from crizzle.singleton import Singleton
 
 logger = logging.getLogger(__name__)
 
