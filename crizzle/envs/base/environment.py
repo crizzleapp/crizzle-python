@@ -10,8 +10,8 @@ from urllib.parse import urlencode
 import requests
 
 from crizzle.agent import Agent
-from crizzle.environments.base.agentInterface import Space, Action, Observation
-from crizzle.singleton import Singleton
+from crizzle.envs.base.agentInterface import Space, Action, Observation
+from crizzle.patterns.singleton import Singleton
 
 logger = logging.getLogger(__name__)
 

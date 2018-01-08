@@ -1,5 +1,5 @@
 import logging
-from crizzle.environments import base
+from crizzle.envs import base
 
 logger = logging.getLogger(__name__)
 

@@ -1,8 +1,8 @@
-from crizzle.environments import base
-from crizzle.environments import krakenex
-from crizzle.environments import polonio
-from crizzle.environments import shapeshiftio
-from crizzle.environments import simulation
+from crizzle.envs import base
+from crizzle.envs import krakenex
+from crizzle.envs import polonio
+from crizzle.envs import shapeshiftio
+from crizzle.envs import simulation
 
 
 def make(exchange_name):

@@ -1,10 +1,11 @@
-from keras.layers.core import Dense, Activation, Dropout
-from keras.layers.recurrent import LSTM
-from keras.utils import plot_model
-from keras.models import Sequential, load_model
-import numpy as np
 import logging
 import time
+
+import numpy as np
+from keras.layers.core import Dropout
+from keras.layers.recurrent import LSTM
+from keras.models import Sequential, load_model
+from keras.utils import plot_model
 
 logger = logging.getLogger(__name__)
 

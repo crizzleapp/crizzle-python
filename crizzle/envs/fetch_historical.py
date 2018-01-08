@@ -7,9 +7,9 @@ from os.path import exists
 
 import pandas as pd
 
-import polonio
-
 pd.set_option('display.width', 300)
+
+DATA_DIR = "G:\\Documents\\Python Scripts\\Crypto_Algotrader\\data"
 
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)

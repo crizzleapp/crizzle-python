@@ -3,7 +3,7 @@ import logging
 from urllib.parse import urlencode
 from urllib.request import urlopen, Request
 
-from crizzle.environments import base
+from crizzle.envs import base
 
 logger = logging.getLogger(__name__)
 

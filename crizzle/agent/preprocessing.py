@@ -1,7 +1,6 @@
 import logging
 import pandas as pd
 import numpy as np
-from typing import List
 
 # TODO: if output_feature in input_features:
 # inputs = windows[:-1] 3d

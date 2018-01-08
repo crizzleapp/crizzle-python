@@ -23,7 +23,6 @@ class Plotter:
 
         Args:
             test_ys (np.ndarray): Training set labels
-            true_test (np.ndarray): Testing set labels
             predictions (np.ndarray): List of predicted sequences
         """
         logger.debug('true data shape: {}'.format(test_ys.shape))

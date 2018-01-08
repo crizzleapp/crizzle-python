@@ -1,4 +1,4 @@
-from crizzle.environments import base
+from crizzle.envs import base
 import logging
 
 # TODO: implement empty methods
