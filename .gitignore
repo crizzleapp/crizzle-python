@@ -67,4 +67,8 @@ target/
 
 data/
 
+!crizzle/data/
+
+__pycache__/
+
 \.idea/
