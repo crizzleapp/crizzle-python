@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 class Observable:
     """
-    A parent class for objects that update themselves or put out notifications
+    A parent class for objects that update their state and emit events
 
-    Examples
+    Examples:
         Register an observer, update the object's state, and all registered observer
         will handle the update appropriately.
 
@@ -27,11 +27,20 @@ class Observable:
         observer.add_subject(self)
 
     def unregister(self, observer):
+        """
+        Add an observer to notify on event
+
+        Args:
+            observer: an instance of the Observer class
+
+        Returns:
+
+        """
         self._observers.remove(observer)
 
     def _notify(self):
         for observer in self._observers:
-            observer.handle(self, )
+            observer.handle(self, self._state)
 
     @property
     def state(self):
@@ -53,11 +62,11 @@ class Observer(metaclass=ABCMeta):
     @abstractmethod
     def handle(self, caller, state):
         """
-        Method to be overridden to handle the state update appropriately
+        Method to handle the emitted event appropriately.
 
         Args:
-            caller: the instance that calls this method
-            state: the new state of the calling instance
+            caller: The object that emitted the event
+            state: Event data
 
         Returns:
             None
@@ -66,6 +75,16 @@ class Observer(metaclass=ABCMeta):
 
     @abstractmethod
     def can_handle(self, caller, state) -> bool:
+        """
+        Whether or not the object can handle a given event from a caller.
+
+        Args:
+            caller: The object that emitted the event
+            state: Event data
+
+        Returns:
+            True if handlable, false otherwise.
+        """
         pass
 
     @property
@@ -80,6 +99,8 @@ class Observer(metaclass=ABCMeta):
 class HandlerChain(Observer):
     """
     Implementation of the Chain of Responsiblity pattern.
+    When an event is received, it is passed down a chain of registered Observer
+    objects, each of which handles the event its own way.
     """
     def __init__(self):
         super(HandlerChain, self).__init__()

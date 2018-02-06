@@ -63,8 +63,6 @@ target/
 
 *.pkl
 
-*.key
-
 data/
 
 !crizzle/data/

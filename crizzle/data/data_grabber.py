@@ -1,3 +1,8 @@
+"""
+Base class for all data grabbers (remote and local)
+"""
+
+
 import logging
 from abc import ABCMeta, abstractmethod
 from crizzle.patterns.observer import Observable
