@@ -61,6 +61,7 @@ class BinanceDataGrabber(DataGrabber):
             response = sess.send(prepped)
         return response
 
+    # region General Endpoints
     def test_connection(self):
         return self.public_request("ping").json()
 
@@ -88,15 +89,37 @@ class BinanceDataGrabber(DataGrabber):
             for pair in info['symbols']:
                 if pair['symbol'] == symbol:
                     return pair if property is None else pair[property]
+    # endregion
 
+    # region Market Data Endpoints
     def depth(self, symbol: str):
         return self.public_request("depth", {"symbol": symbol}).json()
 
-    def ticker_24(self, symbol: str):
-        return self.public_request("ticker/24hr", params={"symbol": symbol}).json()
+    def trade_list(self, symbol: str, limit: int=None):
+        if limit is None:
+            return self.public_request('trades')
+        else:
+            return self.public_request('trades', params={'limit': int})
 
-    def ticker_price(self, symbol: str):
-        return self.public_request("ticker/price", params={"symbol": symbol}, api_version=3).json()
+    def historical_trades(self, symbol: str, limit: int=None, from_id: int=None):
+        params = {'symbol': symbol}
+        if limit is not None:
+            params['limit'] = limit
+        if from_id is not None:
+            params['fromId'] = from_id
+        return self.public_request('historicalTrades', params=params)
+
+    def aggregated_trades(self, symbol: str, from_id: int=None, start: int=None, end: int=None, limit: int=None):
+        params = {'symbol': symbol}
+        if from_id is not None:
+            params['fromId'] = from_id
+        if start is not None:
+            params['startTime'] = start
+        if end is not None:
+            params['endTime'] = end
+        if limit is not None:
+            params['limit'] = limit
+        return self.public_request('aggTrades', params=params)
 
     def candlesticks(self, symbol: str, interval: str, start: int=None, end: int=None):
         params = {"symbol": symbol, "interval": interval}
@@ -104,6 +127,18 @@ class BinanceDataGrabber(DataGrabber):
             params.update({"startTime": start, "endTime": end})
         return self.public_request("klines", params=params).json()
 
+    def ticker_24(self, symbol: str):
+        return self.public_request("ticker/24hr", params={"symbol": symbol}).json()
+
+    def ticker_price(self, symbol: str):
+        return self.public_request("ticker/price", params={"symbol": symbol}, api_version=3).json()
+
+    def ticker_book(self, symbol: str):
+        return self.public_request("ticker/bookTicker", params={"symbol": symbol}, api_version=3).json()
+
+    # endregion
+
+    # region Account Endpoints
     def account_info(self):
         return self.private_request('account', api_version=3, params=self.default_params).json()
 
@@ -144,6 +179,11 @@ class BinanceDataGrabber(DataGrabber):
 
     def test_order(self, symbol, side, type, quantity, price=None, stop_price=None, time_in_force=None, iceberg_qty=None, client_order_id=None):
         return self.order(symbol, side, type, quantity, price=price, stop_price=stop_price, time_in_force=time_in_force, iceberg_qty=iceberg_qty, client_order_id=client_order_id, test=True)
+
+    def cancel_order(self, ):
+        pass
+
+    # endregion
 
     @staticmethod
     def clean_response(response):
