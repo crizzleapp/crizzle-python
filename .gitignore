@@ -63,8 +63,10 @@ target/
 
 *.pkl
 
-*.key
-
 data/
+
+!crizzle/data/
+
+__pycache__/
 
 \.idea/

@@ -1,6 +1,0 @@
-[submodule "cryptomarket"]
-	path = cryptomarket
-	url = https://github.com/tasercake/cryptomarket
-[submodule "exchanges"]
-	path = exchanges
-	url = https://github.com/tasercake/exchanges
