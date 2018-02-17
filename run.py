@@ -2,7 +2,7 @@ import os
 import json
 import logging
 import datetime
-from crizzle import envs
+from crizzle import env
 from crizzle import data
 from crizzle import agent
 
@@ -33,13 +33,13 @@ logging.basicConfig(level=logging.DEBUG, format=log_format, handlers=log_handler
 
 
 # region Environments
-env = envs.make('simulation')
+env = env.make('simulation')
 # endregion
 
 
 # region Data Handlers
 historical = data.RateDataHandler(data_dir=project_directory + "\\data\\historical",
-                                  exchange=envs.make(historical_exchange))
+                                  exchange=env.make(historical_exchange))
 # endregion
 
 

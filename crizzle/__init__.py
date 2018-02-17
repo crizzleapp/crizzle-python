@@ -1,3 +1,3 @@
 from . import agent
 from . import data
-from . import envs
+from . import env
