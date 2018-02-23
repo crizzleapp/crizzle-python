@@ -60,6 +60,7 @@ target/
 *.bz2
 
 *.key
+*.apikey
 
 *.pkl
 
