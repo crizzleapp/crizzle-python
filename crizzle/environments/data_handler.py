@@ -1,17 +1,17 @@
-import abc
 import logging
+from abc import ABCMeta, abstractmethod
 from crizzle.patterns.observer import Observer
 
 logger = logging.getLogger(__name__)
 
 
-class DataHandler(Observer, metaclass=abc.ABCMeta):
+class DataHandler(Observer, metaclass=ABCMeta):
     """
     Base class for all data handlers.
     Observer class that handles incoming updates to data grabbers.
     """
 
-    @abc.abstractmethod
+    @abstractmethod
     def handle(self, caller, state):
         """
         Handle data coming in from data grabber.
