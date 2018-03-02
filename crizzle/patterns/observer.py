@@ -38,7 +38,7 @@ class Observable:
         """
         self._observers.remove(observer)
 
-    def _notify(self):
+    def notify(self):
         for observer in self._observers:
             observer.handle(self, self._state)
 
@@ -49,7 +49,7 @@ class Observable:
     @state.setter
     def state(self, new_state):
         self._state = new_state
-        self._notify()
+        self.notify()
 
 
 class Observer(metaclass=ABCMeta):

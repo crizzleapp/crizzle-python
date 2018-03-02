@@ -11,4 +11,11 @@ class DataGrabber(Observable, metaclass=ABCMeta):
     """
     @abstractmethod
     def next(self):
+        """
+        Updates self.state with the next piece of data.
+        This in turn notifies all registered observers and causes them to handle the new data.
+
+        Returns:
+
+        """
         return False

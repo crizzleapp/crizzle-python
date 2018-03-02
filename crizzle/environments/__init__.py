@@ -24,6 +24,19 @@ def get_local_data_dir():
 
 
 def make_feed(name: str, local_dir: str, *args, **kwargs):
+    """
+    Helper method for creating a new instance of a feed.
+    Does not act as a singleton filter.
+
+    Args:
+        name: Name of the service for which to create a new feed
+        local_dir: Local data directory
+        *args:
+        **kwargs:
+
+    Returns:
+
+    """
     feed_map = {'binance': binance,
                 'backtest': backtest}
     if name in feed_map:

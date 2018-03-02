@@ -6,6 +6,8 @@ logger = logging.getLogger(__name__)
 
 
 class Service:
+    # TODO: add postprocessing method
+    # TODO: add instance-level switch to enable postprocessing in the request() method
     def __init__(self, name, root, key_file=None, default_api_version=None):
         self.name = name
         self.root = root

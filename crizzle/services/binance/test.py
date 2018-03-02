@@ -51,12 +51,13 @@ class TestBinanceSvc(TestCase):
         self.failIf(response.status_code != 200)
 
     def test_order(self):
-        response = env.order('ETHBTC', 'BUY', 'LIMIT', 0.013, price=0.08, time_in_force='GTC')
+        response = env.order('EOSETH', 'BUY', 'LIMIT', 5, price=0.002, time_in_force='GTC')
+        print(response.content)
         self.failIf(response.status_code != 200)
         order_id = response.json()['orderId']
-        response = env.query_order('ETHBTC', order_id)
+        response = env.query_order('EOSETH', order_id)
         self.failIf(response.status_code != 200)
-        response = env.cancel_order('ETHBTC', order_id)
+        response = env.cancel_order('EOSETH', order_id)
         self.failIf(response.status_code != 200)
 
     def test_test_order(self):
@@ -79,6 +80,10 @@ class TestBinanceSvc(TestCase):
         response = env.trade_list('ETHBTC')
         self.failIf(response.status_code != 200)
 
+
+    def test_trading_symbols(self):
+        response = env.trading_symbols()
+        self.failIf(len(response) == 0)
 
 if __name__ == '__main__':
     tester = TestBinanceSvc()

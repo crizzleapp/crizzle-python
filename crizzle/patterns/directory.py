@@ -1,3 +1,4 @@
+import os
 import json
 
 
@@ -28,7 +29,16 @@ class Directory():
     def has_subdirectories(self):
         return len(self.subdirectories) != 0
 
-    def load_from_list(self, source):
+    def load_from_list(self, source: list):
+        """
+        Load directory tree from a recursive list of the format [dirname, [files...], [subdirs...]]
+
+        Args:
+            source: recursive list of the format [dirname, [files...], [subdirs...]]
+
+        Returns:
+            None
+        """
         for directory in source:
             new_dir = self.add_subdirectory(directory[0])  # add directories to self.subdirectories
             for file in directory[1]:
@@ -64,9 +74,12 @@ class Directory():
         return "Directory '{}': {}".format(self.name, self.as_list().__str__())
 
     def __eq__(self, other):
-        return self.name == other.name and self.subdirectories == other.subdirectories and self.files == other.files
+        return self.subdirectories == other.subdirectories and self.files == other.files
 
 
 if __name__ == '__main__':
     dirtree1 = Directory(name='top', source="G:\\Documents\\Python Scripts\\crizzle\\crizzle\\environments\\test.json")
     print(dirtree1.as_dict())
+
+    for i in os.walk('G:\\Documents\\Python Scripts\\crizzle\\data'):
+        print(i)

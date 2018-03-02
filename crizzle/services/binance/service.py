@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class Service(BaseService):
+    # TODO: add postprocessing method deriving from base.service's postproc method
     def __init__(self, key_file=None):
         super(Service, self).__init__('Binance', "https://api.binance.com/api")
         self.default_api_version = 'v1'
@@ -134,6 +135,7 @@ class Service(BaseService):
         return self.get('aggTrades', params=params)
 
     def candlesticks(self, symbol: str, interval: str, start=None, end=None):
+        # TODO: enable conversion to Pandas Dataframe before returning
         params = {"symbol": symbol, "interval": interval}
         if start is not None and end is not None:
             params.update({"startTime": start, "endTime": end})
@@ -250,19 +252,20 @@ if __name__ == '__main__':
     grabber = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey")
     test_env = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance_test.apikey")
 
-    def test_authenticate_request():
-        request = requests.Request('GET', "https://api.binance.com/api/v3/order",
-                                   params={'symbol': 'LTCBTC', 'side': 'BUY', 'type': 'LIMIT', 'timeInForce': 'GTC'},
-                                   data={'quantity': 1, 'price': '0.1', 'recvWindow': 5000, 'timestamp': 1499827319559})
-        print(urllib.parse.urlencode(request.params) + urllib.parse.urlencode(request.data))
-        test_env.sign_request(request)
-        print(request.params)
-        if request.params['signature'] != '0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77':
-            print('failed')
-        else:
-            print('passed')
+    # def test_authenticate_request():
+    #     request = requests.Request('GET', "https://api.binance.com/api/v3/order",
+    #                                params={'symbol': 'LTCBTC', 'side': 'BUY', 'type': 'LIMIT', 'timeInForce': 'GTC'},
+    #                                data={'quantity': 1, 'price': '0.1', 'recvWindow': 5000, 'timestamp': 1499827319559})
+    #     print(urllib.parse.urlencode(request.params) + urllib.parse.urlencode(request.data))
+    #     test_env.sign_request(request)
+    #     print(request.params)
+    #     if request.params['signature'] != '0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77':
+    #         print('failed')
+    #     else:
+    #         print('passed')
 
-    test_authenticate_request()
+    # test_authenticate_request()
+
 
     # print(grabber.test_connection())
     # print(grabber.historical_trades('TRXETH').json())
