@@ -39,7 +39,20 @@ class Service(BaseService):
             pass
 
     def add_api_key(self, request: requests.Request):
-        request.headers['X-MBX-APIKEY'] = self.api_key
+        """
+        Adds API key to the request headers (in-place, does not create new copy of the request)
+
+        Args:
+            request (requests.Request): Request object to add the API key header to
+
+        Returns:
+            None
+        """
+        try:
+            assert self.key_loaded
+            request.headers['X-MBX-APIKEY'] = self.api_key
+        except AssertionError:
+            logger.error("API key has not been loaded. Unable to add API key to request headers.")
 
     def sign_request(self, request: requests.Request):
         encoded = bytes(urllib.parse.urlencode(request.params) + urllib.parse.urlencode(request.data), 'utf-8')

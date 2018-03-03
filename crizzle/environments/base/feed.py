@@ -40,7 +40,13 @@ class Feed(environments.DataGrabber):
                         newfile.write('')
 
     @abstractmethod
-    def update_local_historical_data(self, symbol: str, data_type: str):
+    def update_local_historical_data(self):
+        """
+        Updates locally stored historical data.
+
+        Returns:
+
+        """
         pass
 
     @abstractmethod

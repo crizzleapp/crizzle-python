@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import logging
 from crizzle.environments.base import Feed as BaseFeed
@@ -54,30 +55,37 @@ class Feed(BaseFeed):
                 with open(path) as file:
                     try:
                         data = json.load(file)
+                        last_open_time = data[-1][0]
                         last_close_time = data[-1][6]
-                        print()
                     except json.JSONDecodeError:
                         # TODO: replace with CSV/pandas error checking
                         last_close_time = 0
-                        logger.info("Error decoding file {}, it may be malformed or empty.".format(path))
-                output[symbol][interval] = last_close_time
+                        last_open_time = 0
+                        logger.debug("Error decoding file {}, it may be malformed or empty.".format(path))
+                output[symbol][interval] = (last_open_time, last_close_time)
         return output
 
     def get_historical_candlesticks(self, symbol, interval, start=None, end=None):
         return self.service.candlesticks(symbol, interval, start=start, end=end)
 
-    def update_local_historical_data(self, symbol: str, data_type: str):
+    def update_local_historical_data(self):
         """
-        Updates local candlestick data.
-
-        Args:
-            symbol:
-            data_type:
-
-        Returns:
-
+        Brings locally stored historical data for all chosen symbols up to date.
         """
-        pass
+        latest_timestamps = self.check_local_data()
+        for symbol in latest_timestamps.keys():
+            for interval in latest_timestamps[symbol].keys():
+                open_time, close_time = latest_timestamps[symbol][interval]
+                if close_time - open_time > (time.time() * 1000) - close_time:  # TODO: verify out of date using a better method
+                    candlesticks = self.service.candlesticks(symbol, interval, start=close_time)
+                    path = self.get_filepath(symbol, interval)
+                    with open(path) as file:
+                        try:
+                            old_candlesticks = json.load(file)
+                            old_candlesticks.extend(candlesticks)
+                        except json.JSONDecodeError as e:
+                            logger.debug("Error decoding file {}, it may be malformed or empty.".format(path))
+                            raise e
 
     def next(self):
         pass
@@ -87,4 +95,4 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     key = 'G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey'
     feed = Feed(['TRXETH', 'EOSETH'], key_file=key)
-    print(feed.check_local_data())
+    feed.update_local_historical_data()
