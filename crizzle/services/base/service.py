@@ -2,6 +2,7 @@ import time
 import logging
 import requests
 from abc import ABCMeta, abstractmethod
+from crizzle.patterns import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -9,12 +10,13 @@ logger = logging.getLogger(__name__)
 class Service(metaclass=ABCMeta):
     # TODO: add postprocessing method
     # TODO: add instance-level switch to enable postprocessing in the request() method
-    def __init__(self, name: str, root: str, key_file: str=None, default_api_version=None):
+    def __init__(self, name: str, root: str, key_file: str=None, default_api_version=None, debug=False):
         self.name = name
         self.root = root
         self.key_loaded = False
         self.api_key, self.secret_key = None, None
         self.default_api_version = default_api_version
+        self.debug = debug
         if key_file is not None:
             self.read_key_file(key_file)
         logger.debug("Initialized {} environment".format(name))
@@ -39,6 +41,12 @@ class Service(metaclass=ABCMeta):
             int: millisecond timestamp (by default)
         """
         return int(time.time() * 1000)
+
+    @property
+    @deprecated("")
+    @abstractmethod
+    def function_map(self):
+        return {}
 
     def get_default_params(self, **kwargs) -> dict:
         """
@@ -118,20 +126,24 @@ class Service(metaclass=ABCMeta):
                         pass
         return inp
 
-    @abstractmethod
-    def validate_arguments(self, method: str, *args, **kwargs) -> bool:
+    @deprecated("")
+    def get_function_from_endpoint(self, method_name: str):
         """
-        Validate all arguments for any given method.
+        Maps a method name to a python function.
 
         Args:
-            method (str): Name of method to verify arguments for
-            *args: List of positional arguments
-            **kwargs: Dict of keyword arguments
+            method_name (str): Name of the method to get a reference to.
 
         Returns:
-            bool: True if arguments are valid, False otherwise
+            function: Python function corresponding to the given method name.
         """
-        return True
+        try:
+            func = self.function_map[method_name]
+        except KeyError as e:
+            logger.error("Could not find function corresponding to method name {}.".format(method_name))
+            raise e
+        else:
+            return func
 
     @abstractmethod
     def sign_request(self, request: requests.Request):
@@ -161,8 +173,8 @@ class Service(metaclass=ABCMeta):
     # endregion
 
     # region Request methods
-    def request(self, request_type: str, endpoint: str, params=None,
-                api_version=None, data=None, headers=None, sign=False) -> requests.Response:
+    def request(self, request_type: str, endpoint: str, params=None, api_version=None, data=None, headers=None,
+                sign=False):
         """
         Send a synchronous request to an API endpoint.
 
@@ -191,40 +203,64 @@ class Service(metaclass=ABCMeta):
         with requests.Session() as session:
             try:
                 assert request_type in ('get', 'post', 'put', 'delete')
-                request.method = request_type.upper()
             except AssertionError:
-                logger.critical('invalid request type {}'.format(request_type))
+                logger.error('invalid request type {}'.format(request_type))
+            else:
+                request.method = request_type.upper()
 
             if sign:
                 self.sign_request(request)
             self.add_api_key(request)
             prepped = request.prepare()
             response = session.send(prepped)
-        return response
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.exception("Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name, response.text))
+            finally:
+                return response
 
-    def get(self, endpoint: str, params=None, api_version=None,
-            data=None, headers=None, sign=False) -> requests.Response:
-        return self.request('get', endpoint, params=params, api_version=api_version,
-                            data=data, headers=headers, sign=sign)
+    def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False):
+        return self.request('get', endpoint, params=params, api_version=api_version, data=data, headers=headers,
+                            sign=sign)
 
-    def post(self, endpoint: str, params=None, api_version=None,
-             data=None, headers=None, sign=False) -> requests.Response:
-        return self.request('post', endpoint, params=params, api_version=api_version,
-                            data=data, headers=headers, sign=sign)
+    def post(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True):
+        return self.request('post', endpoint, params=params, api_version=api_version, data=data, headers=headers,
+                            sign=sign)
 
-    def put(self, endpoint: str, params=None, api_version=None,
-            data=None, headers=None, sign=False) -> requests.Response:
-        return self.request('put', endpoint, params=params, api_version=api_version,
-                            data=data, headers=headers, sign=sign)
+    def put(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True):
+        return self.request('put', endpoint, params=params, api_version=api_version, data=data, headers=headers,
+                            sign=sign)
 
-    def delete(self, endpoint: str, params=None, api_version=None,
-               data=None, headers=None, sign=False) -> requests.Response:
-        return self.request('delete', endpoint, params=params, api_version=api_version,
-                            data=data, headers=headers, sign=sign)
+    def delete(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True):
+        return self.request('delete', endpoint, params=params, api_version=api_version, data=data, headers=headers,
+                            sign=sign)
 
     # endregion
     pass
 
 
 if __name__ == '__main__':
-    print(Ellipsis)
+    class Concrete(Service):
+        def add_api_key(self, request: requests.Request):
+            pass
+
+        def process_response(self, method: str, response: requests.Response) -> object:
+            func = self.get_function_from_endpoint(method)
+            if func == self.get_default_params:
+                print(self.get_default_params.__name__)
+                return self.get_default_params()
+
+        def validate_arguments(self, method: str, *args, **kwargs) -> bool:
+            pass
+
+        @property
+        def function_map(self):
+            return {}
+
+        def sign_request(self, request: requests.Request):
+            pass
+
+    svc = Concrete('concrete', 'http://api.binance.com')
+
+
