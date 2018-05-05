@@ -1,8 +1,8 @@
 import os
-from crizzle.environments.data_grabber import DataGrabber
-from crizzle.environments.data_handler import DataHandler
-from crizzle.environments import binance
-from crizzle.environments import backtest
+from crizzle.envs.data_grabber import DataGrabber
+from crizzle.envs.data_handler import DataHandler
+from crizzle.envs import binance
+from crizzle.envs import backtest
 
 dir_file = os.path.join(os.path.dirname(__file__), 'local_data_directory.txt')
 with open(dir_file, 'r') as file:

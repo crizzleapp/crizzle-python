@@ -2,21 +2,20 @@ import time
 import logging
 import requests
 from abc import ABCMeta, abstractmethod
-from crizzle.patterns import deprecated
+from crizzle.patterns import deprecated, assert_in
 
 logger = logging.getLogger(__name__)
 
 
 class Service(metaclass=ABCMeta):
-    # TODO: add postprocessing method
-    # TODO: add instance-level switch to enable postprocessing in the request() method
-    def __init__(self, name: str, root: str, key_file: str=None, default_api_version=None, debug=False):
+    def __init__(self, name: str, root: str, key_file: str = None, default_api_version=None, debug=False, mode=None):
         self.name = name
         self.root = root
         self.key_loaded = False
         self.api_key, self.secret_key = None, None
         self.default_api_version = default_api_version
         self.debug = debug
+        self.mode = mode
         if key_file is not None:
             self.read_key_file(key_file)
         logger.debug("Initialized {} environment".format(name))
@@ -42,12 +41,6 @@ class Service(metaclass=ABCMeta):
         """
         return int(time.time() * 1000)
 
-    @property
-    @deprecated("")
-    @abstractmethod
-    def function_map(self):
-        return {}
-
     def get_default_params(self, **kwargs) -> dict:
         """
         Creates a dictionary of paramters to be sent by default along with every request
@@ -60,7 +53,7 @@ class Service(metaclass=ABCMeta):
         """
         return {}
 
-    def get_final_params(self, **kwargs) -> dict:
+    def get_params(self, **kwargs) -> dict:
         """
         Get the final parameters to send with the request.
 
@@ -97,12 +90,12 @@ class Service(metaclass=ABCMeta):
         else:
             return None, None
 
-    def _json_number_hook(self, inp):
+    def json_number_hook(self, inp):
         if isinstance(inp, list):
             for k, v in enumerate(inp):
                 # check values for integers
                 if isinstance(v, (list, dict)):
-                    inp[k] = self._json_number_hook(v)
+                    inp[k] = self.json_number_hook(v)
                 else:
                     try:
                         f = float(v)
@@ -115,7 +108,7 @@ class Service(metaclass=ABCMeta):
             for k, v in inp.items():
                 # check values for integers
                 if isinstance(v, (list, dict)):
-                    inp[k] = self._json_number_hook(v)
+                    inp[k] = self.json_number_hook(v)
                 else:
                     try:
                         f = float(v)
@@ -126,32 +119,15 @@ class Service(metaclass=ABCMeta):
                         pass
         return inp
 
-    @deprecated("")
-    def get_function_from_endpoint(self, method_name: str):
-        """
-        Maps a method name to a python function.
-
-        Args:
-            method_name (str): Name of the method to get a reference to.
-
-        Returns:
-            function: Python function corresponding to the given method name.
-        """
-        try:
-            func = self.function_map[method_name]
-        except KeyError as e:
-            logger.error("Could not find function corresponding to method name {}.".format(method_name))
-            raise e
-        else:
-            return func
-
     @abstractmethod
-    def sign_request(self, request: requests.Request):
+    def sign_request_data(self, params=None, data=None, headers=None):
         """
         Sign the request with the secret key.
 
         Args:
-            request (requests.Request):
+            params:
+            data:
+            headers:
 
         Returns:
 
@@ -159,17 +135,20 @@ class Service(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def add_api_key(self, request: requests.Request):
+    def add_api_key(self, params=None, data=None, headers=None):
         """
         Adds API key to the request object.
 
         Args:
-            request (requests.Request): Request object to add the API key to
+            data:
+            headers:
+            params:
 
         Returns:
             None
         """
         pass
+
     # endregion
 
     # region Request methods
@@ -193,32 +172,35 @@ class Service(metaclass=ABCMeta):
         arguments = locals()
         if api_version is None:
             api_version = self.default_api_version
-        final_params = self.__class__.get_final_params(**arguments)
-        logger.debug('Querying {}'.format(self.name))
-        request = requests.Request(None, self.root + "/{}/".format(api_version) + endpoint,
-                                   params=final_params, data=data, headers=headers)
+        if headers is None:
+            headers = {}
+        if data is None:
+            data = {}
+        final_params = self.__class__.get_params(**arguments)
 
         # TODO: implement rate limiter
 
         with requests.Session() as session:
             try:
-                assert request_type in ('get', 'post', 'put', 'delete')
-            except AssertionError:
-                logger.error('invalid request type {}'.format(request_type))
+                assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
+            except ValueError:
+                logger.exception('invalid request type {}'.format(request_type))
+                raise
             else:
-                request.method = request_type.upper()
-
-            if sign:
-                self.sign_request(request)
-            self.add_api_key(request)
-            prepped = request.prepare()
-            response = session.send(prepped)
-            try:
-                response.raise_for_status()
-            except requests.HTTPError as e:
-                logger.exception("Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name, response.text))
-            finally:
-                return response
+                if sign:
+                    self.sign_request_data(params=final_params, data=data, headers=headers)
+                self.add_api_key(params=final_params, data=data, headers=headers)
+                request = requests.Request(request_type.upper(), self.root + "/{}/".format(api_version) + endpoint,
+                                           params=final_params, data=data, headers=headers)
+                prepped = request.prepare()
+                response = session.send(prepped)
+                try:
+                    response.raise_for_status()
+                except requests.HTTPError as e:
+                    logger.exception("Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name, response.text))
+                finally:
+                    logger.debug('Queried {} at {}'.format(self.name, response.url))
+                    return response
 
     def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False):
         return self.request('get', endpoint, params=params, api_version=api_version, data=data, headers=headers,
@@ -241,26 +223,15 @@ class Service(metaclass=ABCMeta):
 
 
 if __name__ == '__main__':
-    class Concrete(Service):
-        def add_api_key(self, request: requests.Request):
-            pass
+    import asyncio
 
-        def process_response(self, method: str, response: requests.Response) -> object:
-            func = self.get_function_from_endpoint(method)
-            if func == self.get_default_params:
-                print(self.get_default_params.__name__)
-                return self.get_default_params()
+    async def countdown(number, n):
+        while n > 0:
+            print('T minus', n, f'({number})')
+            await asyncio.sleep(0.1)
+            n -= 1
 
-        def validate_arguments(self, method: str, *args, **kwargs) -> bool:
-            pass
-
-        @property
-        def function_map(self):
-            return {}
-
-        def sign_request(self, request: requests.Request):
-            pass
-
-    svc = Concrete('concrete', 'http://api.binance.com')
-
-
+    loop = asyncio.get_event_loop()
+    tasks = [asyncio.ensure_future(countdown("A", 10)), asyncio.ensure_future(countdown("B", 5))]
+    loop.run_until_complete(asyncio.wait(tasks))
+    loop.close()

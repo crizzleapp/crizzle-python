@@ -78,7 +78,7 @@ class Directory():
 
 
 if __name__ == '__main__':
-    dirtree1 = Directory(name='top', source="G:\\Documents\\Python Scripts\\crizzle\\crizzle\\environments\\test.json")
+    dirtree1 = Directory(name='top', source="G:\\Documents\\Python Scripts\\crizzle\\crizzle\\envs\\test.json")
     print(dirtree1.as_dict())
 
     for i in os.walk('G:\\Documents\\Python Scripts\\crizzle\\data'):

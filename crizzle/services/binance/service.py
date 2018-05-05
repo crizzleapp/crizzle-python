@@ -1,5 +1,6 @@
 import time
 import hmac
+import json
 import urllib
 import logging
 import hashlib
@@ -11,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class Service(BaseService):
-    # TODO: add postprocessing method deriving from base.service's postproc method
-    def __init__(self, key_file=None, debug=False):
-        super(Service, self).__init__('Binance', "https://api.binance.com/api", debug=debug)
+    def __init__(self, key_file=None, debug=False, mode='json', recvWindow=None):
+        super(Service, self).__init__('Binance', "https://api.binance.com/api", debug=debug, mode=mode)
         self.timestamp_unit = 'ms'
         self.default_api_version = 'v1'
+        self.recvWindow = 5000 if recvWindow is None else recvWindow
         self.api_key, self.secret_key = self.read_key_file(key_file) if key_file is not None else (None, None)
 
     # region Helper methods
@@ -23,20 +24,11 @@ class Service(BaseService):
     def timestamp(self) -> int:
         return int(1000 * (time.time() - 1))
 
-    @property
-    @patterns.deprecated("")
-    def function_map(self):
-        return {'exchangeInfo': self.info}
-
     def get_default_params(self, **kwargs):
         assert 'sign' in kwargs
-        return {'timestamp': self.timestamp} if kwargs['sign'] else {}
+        return {'timestamp': self.timestamp, 'recvWindow': self.recvWindow} if kwargs['sign'] else {}
 
-    def validate_arguments(self, method, *args, **kwargs):
-        if method == self.order:
-            pass
-
-    def add_api_key(self, request):
+    def add_api_key(self, params=None, data=None, headers=None):
         """
         Adds API key to the request headers (in-place, does not create new copy of the request)
 
@@ -48,14 +40,14 @@ class Service(BaseService):
         """
         try:
             assert self.key_loaded
-            request.headers['X-MBX-APIKEY'] = self.api_key
+            headers['X-MBX-APIKEY'] = self.api_key
         except AssertionError:
             logger.error("API key has not been loaded. Unable to add API key to request headers.")
 
-    def sign_request(self, request):
-        encoded = bytes(urllib.parse.urlencode(request.params) + urllib.parse.urlencode(request.data), 'utf-8')
+    def sign_request_data(self, params=None, data=None, headers=None):
+        encoded = bytes(urllib.parse.urlencode(params) + urllib.parse.urlencode(data), 'utf-8')
         signature = hmac.new(self.secret_key, encoded, digestmod=hashlib.sha256)
-        request.params['signature'] = signature.hexdigest()
+        params['signature'] = signature.hexdigest()
     # endregion
 
     # region General Endpoints
@@ -72,7 +64,7 @@ class Service(BaseService):
     def info(self, symbol=None, key=None):
         """
         Get information about a symbol or the exchange.
-        if property is specified:
+        if key is specified:
             if symbol is specified, returns specified property of that symbol.
             else, returns specified property of the exchange.
 
@@ -85,7 +77,7 @@ class Service(BaseService):
         """
         response = self.get('exchangeInfo')
         if self.debug:
-            return response
+            return response.json()
         else:
             if symbol is None:
                 return response if key is None else response.json()[key]
@@ -93,6 +85,22 @@ class Service(BaseService):
                 for pair in response.json()['symbols']:
                     if pair['symbol'] == symbol:
                         return pair if key is None else pair[key]
+
+    def trading_assets(self):
+        """
+
+
+        Returns:
+
+        """
+        symbols = self.info(key='symbols')
+        assets = set()
+        for symbol in symbols:
+            base = symbol['baseAsset']
+            quote = symbol['quoteAsset']
+            assets.add(base)
+            assets.add(quote)
+        return assets
 
     def trading_symbols(self):
         """
@@ -129,13 +137,15 @@ class Service(BaseService):
         response = self.get("depth", params=params)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             data = response.json()
             asks = pd.DataFrame(data['asks'], columns=['price', 'quantity', 'ignore'], dtype=float)
             asks.pop('ignore')
             bids = pd.DataFrame(data['bids'], columns=['price', 'quantity', 'ignore'], dtype=float)
             bids.pop('ignore')
             return {'asks': asks, 'bids': bids, 'last': data['lastUpdateId']}
+        elif self.mode == 'json':
+            return response.json()
 
     def recent_trades(self, symbol: str, limit: int=None):
         params = {'symbol': symbol}
@@ -144,12 +154,14 @@ class Service(BaseService):
         response = self.get('trades', params=params)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             df = pd.DataFrame(response.json())
             df['timestamp'] = df['time']
             df['time'] = pd.to_datetime(df['time'], unit=self.timestamp_unit)
             df[['price', 'quantity']] = df[['price', 'quantity']].astype(float)
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def historical_trades(self, symbol: str, limit: int=None, from_id: int=None):
         params = {'symbol': symbol}
@@ -160,12 +172,14 @@ class Service(BaseService):
         response = self.get('historicalTrades', params=params)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             df = pd.DataFrame(response.json())
             df['timestamp'] = df['time']
             df['time'] = pd.to_datetime(df['time'], unit=self.timestamp_unit)
             df[['price', 'quantity']] = df[['price', 'quantity']].astype(float)
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def aggregated_trades(self, symbol: str, from_id: int = None, start: int = None, end: int = None,
                           limit: int = None):
@@ -181,7 +195,7 @@ class Service(BaseService):
         response = self.get('aggTrades', params=params)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             df = pd.DataFrame(response.json())
             df['id'] = df.pop('a')
             df['price'] = df.pop('p').astype(float)
@@ -193,24 +207,32 @@ class Service(BaseService):
             df['isBuyerMaker'] = df.pop('m')
             df['isBestMatch'] = df.pop('M')
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def candlesticks(self, symbol: str, interval: str, limit=None, start=None, end=None):
         params = {"symbol": symbol, "interval": interval}
-        if start is not None and end is not None:
-            params.update({"startTime": start, "endTime": end})
+        if start is not None:
+            params.update({"startTime": start})
+        if end is not None:
+            params.update({"endTime": end})
         if limit is not None:
             params['limit'] = limit
         response = self.get("klines", params=params)
         if self.debug:
             return response
         else:
-            df = pd.DataFrame(response.json(), columns=['openTime', 'open', 'high', 'low', 'close', 'volume', 'closeTime', 'quoteVolume', 'numTrades', 'takerBuyBaseVolume', 'takerBuyQuoteVolume', 'ignore'])
+            df = pd.DataFrame(response.json(), columns=['openTimestamp', 'open', 'high', 'low', 'close', 'volume',
+                                                        'closeTimestamp', 'quoteVolume', 'numTrades', 'takerBuyBaseVolume',
+                                                        'takerBuyQuoteVolume', 'ignore'])
             df.pop('ignore')
-            df['openTimestamp'] = df['openTime']
-            df['closeTimestamp'] = df['closeTime']
-            df['openTime'] = pd.to_datetime(df['openTime'], unit=self.timestamp_unit)
-            df['closeTime'] = pd.to_datetime(df['closeTime'], unit=self.timestamp_unit)
-            return df
+            df = df.apply(pd.to_numeric)
+            df['openTime'] = pd.to_datetime(df['openTimestamp'], unit=self.timestamp_unit)
+            df['closeTime'] = pd.to_datetime(df['closeTimestamp'], unit=self.timestamp_unit)
+            if self.mode == 'pandas':
+                return df
+            elif self.mode == 'json':
+                return json.loads(df.to_json(orient='records', date_format='iso'))
 
     def ticker_24(self, symbol: str=None):
         params = {}
@@ -219,12 +241,14 @@ class Service(BaseService):
         response = self.get("ticker/24hr", params=params)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             if symbol is not None:
                 df = pd.DataFrame(response.json(), index=[0])
             else:
                 df = pd.DataFrame(response.json())
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def ticker_price(self, symbol: str=None):
         params = {}
@@ -233,12 +257,15 @@ class Service(BaseService):
         response = self.get("ticker/price", params=params, api_version='v3')
         if self.debug:
             return response
-        else:
-            if symbol is not None:
-                df = pd.DataFrame(response.json(), index=[0])
-            else:
+        elif self.mode == 'pandas':
+            if symbol is None:
                 df = pd.DataFrame(response.json())
+            else:
+                df = pd.DataFrame(response.json(), index=[0])
+            df.price = df.price.astype('float')
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def ticker_book(self, symbol: str=None):
         params = {}
@@ -247,12 +274,14 @@ class Service(BaseService):
         response = self.get("ticker/bookTicker", params=params, api_version='v3')
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             if symbol is not None:
                 df = pd.DataFrame(response.json(), index=[0])
             else:
                 df = pd.DataFrame(response.json())
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     # endregion
 
@@ -333,8 +362,8 @@ class Service(BaseService):
     def test_order(self, symbol, side, order_type, quantity, price=None, stop_price=None, time_in_force=None,
                    iceberg_qty=None, client_order_id=None):
         response = self.order(symbol, side, order_type, quantity, price=price, stop_price=stop_price,
-                          time_in_force=time_in_force, iceberg_qty=iceberg_qty,
-                          client_order_id=client_order_id, test=True)
+                              time_in_force=time_in_force, iceberg_qty=iceberg_qty,
+                              client_order_id=client_order_id, test=True)
         if self.debug:
             return response
         else:
@@ -377,11 +406,13 @@ class Service(BaseService):
         response = self.get('openOrders', api_version='v3', params=params, sign=True)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             df = pd.DataFrame(response.json())
             df['timestamp'] = df['time']
             df['time'] = pd.to_datetime(df['time'], unit='ms')
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def all_orders(self, symbol, order_id=None, limit=None):
         params = {'symbol': symbol}
@@ -392,21 +423,25 @@ class Service(BaseService):
         response = self.get('allOrders', api_version='v3', params=params, sign=True)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             df = pd.DataFrame(response.json())
             df['timestamp'] = df['time']
             df['time'] = pd.to_datetime(df['time'])
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     def account_info(self):
         response = self.get('account', api_version='v3', params=None, sign=True)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             data = response.json()
             df = pd.DataFrame(data['balances'])
             df['time'] = pd.to_datetime(df['timestamp'])
             return data
+        elif self.mode == 'json':
+            return response.json()
 
     def trade_list(self, symbol, limit: int=None, from_id: int=None):
         params = {'symbol': symbol}
@@ -417,11 +452,13 @@ class Service(BaseService):
         response = self.get('myTrades', api_version='v3', params=params, sign=True)
         if self.debug:
             return response
-        else:
+        elif self.mode == 'pandas':
             df = pd.DataFrame(response.json())
             df['timestamp'] = df['time']
-            df['time'] = pd.to_datetime(df['time'])
+            df['time'] = pd.to_datetime(df['time'], unit='ms')
             return df
+        elif self.mode == 'json':
+            return response.json()
 
     # endregion
 
@@ -432,7 +469,5 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     pd.options.display.float_format = '{:.10f}'.format
 
-    grabber = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey")
+    grabber = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey", recvWindow=20000)
     # test_env = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance_test.apikey")
-
-    print(grabber.trade_list('TRXETH'))

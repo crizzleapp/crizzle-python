@@ -16,7 +16,7 @@ class Service(BaseService):
     # region Request methods
     def request(self, request_type: str, endpoint: str, params=None,
                 api_version=None, data=None, headers=None, sign=False):
-        final_params = self.get_final_params()
+        final_params = self.get_params()
         if params is not None:
             final_params.update(params)
         logger.debug('Querying {}'.format(self.name))
@@ -30,7 +30,7 @@ class Service(BaseService):
                 logger.critical('invalid request type {}'.format(request_type))
 
             if sign:
-                self.sign_request(request)
+                self.sign_request_data(request, None, None)
             prepped = request.prepare()
             response = session.send(prepped)
         return response

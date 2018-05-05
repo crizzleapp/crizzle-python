@@ -14,7 +14,7 @@ class TestBinanceSvc(TestCase):
                                    params={'symbol': 'LTCBTC', 'side': 'BUY', 'type': 'LIMIT', 'timeInForce': 'GTC'},
                                    data={'quantity': 1, 'price': '0.1', 'recvWindow': 5000, 'timestamp': 1499827319559})
         print(urllib.parse.urlencode(request.params) + urllib.parse.urlencode(request.data))
-        test_env.sign_request(request)
+        test_env.sign_request_data(request)
         print(request.params)
         self.failIf(request.params['signature'] != '0fd168b8ddb4876a0358a8d14d0c9f3da0e9b20c5d52b2a00fcf7d1c602f9a77')
 

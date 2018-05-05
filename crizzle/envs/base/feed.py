@@ -2,42 +2,36 @@ import os
 import logging
 from abc import abstractmethod
 from crizzle import services
-from crizzle import environments
+from crizzle import envs
 
 logger = logging.getLogger(__name__)
 
 
-class Feed(environments.DataGrabber):
+class Feed(envs.DataGrabber):
     def __init__(self, name: str, key_file: str=None):
         super(Feed, self).__init__()
         self.name = name
-        self.data_directory = os.path.join(environments.get_local_data_dir(), self.name)
+        self.data_directory = envs.get_local_data_dir()
         self.service = services.make(self.name, key_file=key_file)
-        # TODO: determine if dynamic file creation is necessary in the general case
-        # TODO: if so, replace pre-emptive file creation with dynamic file creation
+        # TODO: replace multiple files with a single file.
         logger.debug("Initialised new feed '{}'.".format(self.name))
 
-    def create_nonexistent_files(self, files: dict):
+    def initialize_file(self, filepath: str):
         """
-        Creates non-existent files in the local data directory.
+        Creates historical data file in the local data directory if it doesn't already exist.
 
         Args:
-            files (dict): Dictionary of the format {folder1: [files...], folder2: [files...]}
+            filepath (str): Full path to file
 
         Returns:
             None
         """
         if not os.path.isdir(self.data_directory):
             os.makedirs(self.data_directory)
-        for folder in files.keys():
-            folder_path = os.path.join(self.data_directory, folder)
-            if not os.path.isdir(folder_path):
-                os.makedirs(folder_path)
-            for file in files[folder]:
-                full_path = os.path.join(self.data_directory, folder, file)
-                if not os.path.exists(full_path):
-                    with open(full_path, 'w') as newfile:
-                        newfile.write('')
+        full_path = os.path.join(self.data_directory, filepath)
+        if not os.path.exists(full_path):
+            with open(full_path, 'w') as newfile:
+                newfile.write('')
 
     @abstractmethod
     def update_local_historical_data(self):
@@ -59,7 +53,7 @@ class Feed(environments.DataGrabber):
 
 if __name__ == '__main__':
     class ConcreteFeed(Feed):
-        def update_local_historical_data(self, symbol: str, data_type: str):
+        def update_local_historical_data(self):
             pass
 
         def next(self):
