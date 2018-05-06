@@ -23,7 +23,7 @@ def get_local_data_dir():
         return file.read()
 
 
-def make_feed(name: str, local_dir: str, *args, **kwargs):
+def make(name: str, *args, **kwargs):
     """
     Helper method for creating a new instance of a feed.
     Does not act as a singleton filter.
@@ -40,7 +40,7 @@ def make_feed(name: str, local_dir: str, *args, **kwargs):
     feed_map = {'binance': binance,
                 'backtest': backtest}
     if name in feed_map:
-        return feed_map[name].Feed(local_dir, *args, **kwargs)
+        return feed_map[name].Feed(*args, **kwargs)
     else:
         raise NameError("Could not find environment with name '{}'.".format(name))
 
