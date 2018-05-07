@@ -122,5 +122,6 @@ if __name__ == '__main__':
     feed = Feed(intervals=['1d'], key_file=key)
     # feed.update_local_historical_data()
     # print(feed.most_recent())
-    print(feed.current_price_graph())
     # print(feed.service.candlesticks('EOSETH', '1h', start=0))
+    graph = feed.current_price_graph()
+    print(graph.inverse)

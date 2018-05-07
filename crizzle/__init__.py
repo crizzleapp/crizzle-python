@@ -1,5 +1,5 @@
-import agent
-import envs
-import patterns
-import services
-import visualisation
+from . import envs
+from . import agent
+from . import patterns
+from . import services
+from . import visualisation

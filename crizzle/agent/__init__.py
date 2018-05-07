@@ -1,1 +1,1 @@
-from .agent import Agent
+from crizzle.agent.agent import Agent

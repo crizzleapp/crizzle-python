@@ -10,6 +10,13 @@ class Service(BaseService):
     """
     Environment for the Poloniex exchange
     """
+
+    def sign_request_data(self, params=None, data=None, headers=None):
+        pass
+
+    def add_api_key(self, params=None, data=None, headers=None):
+        pass
+
     def __init__(self, key_file=None):
         super(Service, self).__init__('Poloniex', 'https://poloniex.com/', key_file=key_file)
 

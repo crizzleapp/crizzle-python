@@ -1,6 +1,5 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-data/
 *.py[cod]
 *$py.class
 
@@ -21,13 +20,11 @@ lib64/
 parts/
 sdist/
 var/
+*.egg
 *.egg-info/
 .installed.cfg
-*.egg
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
@@ -49,25 +46,20 @@ coverage.xml
 *.mo
 *.pot
 
-*.log
-
 # Sphinx documentation
 docs/_build/
 
 # PyBuilder
 target/
-
 *.bz2
 
+# PyCharm stuff
+\.idea/
+
+# Crizzle stuff
+data/
+*.log
+
+# API keys
 *.key
 *.apikey
-
-*.pkl
-
-data/
-
-!crizzle/data/
-
-__pycache__/
-
-\.idea/

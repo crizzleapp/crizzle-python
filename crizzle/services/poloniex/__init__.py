@@ -1,1 +1,1 @@
-from crizzle.services.poloniex.poloniex_env import Service
+from crizzle.services.poloniex.service import Service

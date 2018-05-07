@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/tasercake/Crizzle.svg?branch=master)](https://travis-ci.org/tasercake/Crizzle) [![Coverage Status](https://coveralls.io/repos/github/tasercake/Crizzle/badge.svg?branch=master)](https://coveralls.io/github/tasercake/Crizzle?branch=master)
+
 # Crizzle
 
 ###### A Python 3 algotrading library for cryptocurrency exchanges
@@ -15,7 +17,7 @@ git clone https://github.com/tasercake/Crizzle
 ```
 
 ```bash
-pip install . --editable
+pip install --editable .
 ```
 
 Create an API key on your exchange (only Binance is supported at the moment).

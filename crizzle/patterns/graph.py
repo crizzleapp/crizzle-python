@@ -43,18 +43,18 @@ class DiGraph:
         self.name = None
         if isinstance(adjacency, dict):
             assert edges is None
-            self.verify_integrity(adjacency)
+            self.repair_adjacency(adjacency)
             self._adjacency = adjacency
         elif isinstance(edges, list):
             assert adjacency is None
             adjacency = self.edges_to_adjacency(edges)
-            self.verify_integrity(adjacency)
+            self.repair_adjacency(adjacency)
             self._adjacency = adjacency
         if name is not None:
             self.name = name
 
     @staticmethod
-    def verify_integrity(adjacency):
+    def repair_adjacency(adjacency):
         missing_origins = []
         for adj in adjacency.values():
             for dest in adj:
@@ -77,7 +77,12 @@ class DiGraph:
 
     @property
     def inverse(self):
-        return
+        inverse_edges = []
+        for origin in self._adjacency:
+            for destination in self._adjacency[origin]:
+                inverse = [destination, origin, 1.0 / self._adjacency[origin][destination]]
+                inverse_edges.append(inverse)
+        return DiGraph(edges=inverse_edges)
 
     @property
     def nodes(self):
@@ -90,9 +95,9 @@ class DiGraph:
     @property
     def edges(self):
         edges = []
-        for origin, destinations in self._adjacency.items():
-            for dest in destinations:
-                edges.append((origin, dest, destinations[dest]))
+        for node, neighbors in self._adjacency.items():
+            for nb in neighbors:
+                edges.append((node, nb, neighbors[nb]))
         return edges
 
     def add_node(self, name):
@@ -127,13 +132,9 @@ class DiGraph:
         except AssertionError as e:
             print(e)
 
-    def append_inverse(self):
-        inverse_edges = []
-        for origin in self._adjacency:
-            for destination in self._adjacency[origin]:
-                inverse = [destination, origin, 1.0 / self._adjacency[origin][destination]]
-                inverse_edges.append(inverse)
-        self.add_edges(inverse_edges)
+    def add_inverse(self):
+        inverse = self.inverse
+        self.add_edges(inverse.edges)
 
     def __str__(self):
         return str(self._adjacency)
@@ -251,7 +252,7 @@ if __name__ == '__main__':
                    ['GNT', 'BTC', 9.48e-05], ['GNT', 'ETH', 0.00121369], ['GNT', 'BNB', 0.06136],
                    ['LOOM', 'BTC', 5.451e-05], ['LOOM', 'ETH', 0.00069659], ['LOOM', 'BNB', 0.03492]])
 
-        l.append_inverse()
+        l.add_inverse()
         print(l)
         print(l.shortest_path('CHAT', 'SYS'))
 
