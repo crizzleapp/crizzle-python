@@ -17,8 +17,3 @@ def load_config(path):
     for file_name in os.listdir(config['keys']):
         key_path = os.path.join(config['keys'], file_name)
         load_key(key_path)
-
-
-if __name__ == '__main__':
-    load_config('G:\\Documents\\Python Scripts\\crizzle\\config_example.json')
-    print(os.environ['CrizzleKey_binance'])

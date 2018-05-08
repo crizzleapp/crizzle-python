@@ -4,7 +4,7 @@ import json
 import logging
 import requests
 from abc import ABCMeta, abstractmethod
-from crizzle.patterns import deprecated, assert_in
+from crizzle.patterns import assert_in
 
 logger = logging.getLogger(__name__)
 

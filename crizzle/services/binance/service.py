@@ -33,7 +33,9 @@ class Service(BaseService):
         Adds API key to the request headers (in-place, does not create new copy of the request)
 
         Args:
-            request (requests.Request): Request object to add the API key header to
+            params:
+            data:
+            headers:
 
         Returns:
             None
@@ -138,15 +140,16 @@ class Service(BaseService):
         response = self.get("depth", params=params)
         if self.debug:
             return response
-        elif self.mode == 'pandas':
-            data = response.json()
-            asks = pd.DataFrame(data['asks'], columns=['price', 'quantity', 'ignore'], dtype=float)
-            asks.pop('ignore')
-            bids = pd.DataFrame(data['bids'], columns=['price', 'quantity', 'ignore'], dtype=float)
-            bids.pop('ignore')
-            return {'asks': asks, 'bids': bids, 'last': data['lastUpdateId']}
-        elif self.mode == 'json':
-            return response.json()
+        else:
+            if self.mode == 'pandas':
+                data = response.json()
+                asks = pd.DataFrame(data['asks'], columns=['price', 'quantity', 'ignore'], dtype=float)
+                asks.pop('ignore')
+                bids = pd.DataFrame(data['bids'], columns=['price', 'quantity', 'ignore'], dtype=float)
+                bids.pop('ignore')
+                return {'asks': asks, 'bids': bids, 'last': data['lastUpdateId']}
+            elif self.mode == 'json':
+                return response.json()
 
     def recent_trades(self, symbol: str, limit: int = None):
         params = {'symbol': symbol}
