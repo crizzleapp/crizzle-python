@@ -63,8 +63,8 @@ Create a `config.json` file at any location to hold your Crizzle configuration -
 
 ```json
 {
-  "data": "D:\\Crizzle\\data",  // Path to folder that holds data downloaded from services
-  "keys": "D:\\Crizzle\\keys",  // Path to folder that contains API keys
+  "data": "D:\\Crizzle\\data",
+  "keys": "D:\\Crizzle\\keys"
 }
 ```
 
