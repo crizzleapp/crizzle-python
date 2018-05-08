@@ -1,4 +1,6 @@
+import os
 import time
+import json
 import logging
 import requests
 from abc import ABCMeta, abstractmethod
@@ -8,16 +10,14 @@ logger = logging.getLogger(__name__)
 
 
 class Service(metaclass=ABCMeta):
-    def __init__(self, name: str, root: str, key_file: str = None, default_api_version=None, debug=False, mode=None):
+    def __init__(self, name: str, root: str, key=None, default_api_version=None, debug=False):
         self.name = name
         self.root = root
         self.key_loaded = False
         self.api_key, self.secret_key = None, None
         self.default_api_version = default_api_version
         self.debug = debug
-        self.mode = mode
-        if key_file is not None:
-            self.read_key_file(key_file)
+        self.load_key(key)
         logger.debug("Initialized {} environment".format(name))
 
     # region Helper methods
@@ -70,25 +70,32 @@ class Service(metaclass=ABCMeta):
                 final_params.update(params)
         return final_params
 
-    def read_key_file(self, key_file) -> tuple:
+    def load_key(self, key=None) -> None:
         """
         Loads the public and private API keys from a given file into self.api_key and self.secret_key.
 
         Args:
-            key_file: Path to file containing API key and secret.
+            key: Path to file containing API key and secret.
             The two keys must be on different lines, and the file must contain exactly 2 lines.
 
         Returns:
             tuple: (API key, Secret key)
         """
-        if key_file is not None:
-            with open(key_file, 'rb') as file:
-                api_key = file.readline().strip()
-                secret_key = file.readline().strip()
-            self.key_loaded = True
-            return api_key, secret_key
+        if key is not None:
+            if isinstance(key, str):
+                with open(key, 'r') as file:
+                    keys = json.load(file)
+                    self.api_key, self.secret_key = keys['key'], keys['secret']
+                self.key_loaded = True
+            elif isinstance(key, dict):
+                self.api_key, self.secret_key = key['key'], key['secret']
+                self.key_loaded = True
         else:
-            return None, None
+            try:
+                key = json.loads(os.environ['CrizzleKey_{}'.format(self.name)])
+                self.load_key(key)
+            except KeyError:
+                logger.error('API key for service {} not found in environment variables.'.format(self.name))
 
     def json_number_hook(self, inp):
         if isinstance(inp, list):
@@ -219,19 +226,3 @@ class Service(metaclass=ABCMeta):
                             sign=sign)
 
     # endregion
-    pass
-
-
-if __name__ == '__main__':
-    import asyncio
-
-    async def countdown(number, n):
-        while n > 0:
-            print('T minus', n, f'({number})')
-            await asyncio.sleep(0.1)
-            n -= 1
-
-    loop = asyncio.get_event_loop()
-    tasks = [asyncio.ensure_future(countdown("A", 10)), asyncio.ensure_future(countdown("B", 5))]
-    loop.run_until_complete(asyncio.wait(tasks))
-    loop.close()

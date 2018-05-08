@@ -1,14 +1,22 @@
 from unittest import TestCase
 import requests
-import urllib
+import os
 from crizzle.services.binance import Service
+from crizzle import load_key
 
 
-svc = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey", debug=True)
-test_svc = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance_test.apikey", debug=True)
+svc = Service(debug=True)
+test_svc = Service(key={
+    "key": "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
+    "secret": "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j"
+}, debug=True)
 
 
 class TestBinanceSvc(TestCase):
+    def test_key_loaded(self):
+        assert svc.key_loaded
+        assert test_svc.key_loaded
+
     def test_authenticate_request(self):
         request = requests.Request('GET', "https://api.binance.com/api/v3/order",
                                    params={'symbol': 'LTCBTC', 'side': 'BUY', 'type': 'LIMIT', 'timeInForce': 'GTC'},

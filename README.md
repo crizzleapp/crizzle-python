@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/tasercake/Crizzle.svg?branch=master)](https://travis-ci.org/tasercake/Crizzle) [![Coverage Status](https://coveralls.io/repos/github/tasercake/Crizzle/badge.svg?branch=master)](https://coveralls.io/github/tasercake/Crizzle?branch=master)
+Release: [![Build Status](https://travis-ci.org/tasercake/Crizzle.svg?branch=master)](https://travis-ci.org/tasercake/Crizzle) [![Coverage Status](https://coveralls.io/repos/github/tasercake/Crizzle/badge.svg?branch=master)](https://coveralls.io/github/tasercake/Crizzle?branch=master) Dev: [![Build Status](https://travis-ci.org/tasercake/Crizzle.svg?branch=dev)](https://travis-ci.org/tasercake/Crizzle)
 
 # Crizzle
 

@@ -64,10 +64,6 @@ class Feed(BaseFeed):
 
         return output
 
-    def find_holes(self, interval, symbol):
-        with open(self.historical_filepath) as file:
-            data = json.load(file)[interval][symbol]
-
     def current_price_graph(self):
         prices = self.current_price()
         edges = list(map(
@@ -102,8 +98,8 @@ class Feed(BaseFeed):
                         data[interval][symbol] = []
                     candlesticks = data[interval][symbol]
                     open_time, close_time = latest_timestamps[interval][symbol]
-                    while (
-                            time.time() * 1000) - close_time > close_time - open_time:  # TODO: verify out of date using a better method
+                    while (time.time() * 1000) - close_time > close_time - open_time:
+                        # TODO: verify out of date using a better method
                         new_candlesticks = self.service.candlesticks(symbol, interval, start=close_time)
                         open_time = new_candlesticks[-1]['openTimestamp']
                         close_time = new_candlesticks[-1]['closeTimestamp']
@@ -114,14 +110,3 @@ class Feed(BaseFeed):
 
     def next(self):
         pass
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    key = 'G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey'
-    feed = Feed(intervals=['1d'], key_file=key)
-    # feed.update_local_historical_data()
-    # print(feed.most_recent())
-    # print(feed.service.candlesticks('EOSETH', '1h', start=0))
-    graph = feed.current_price_graph()
-    print(graph.inverse)

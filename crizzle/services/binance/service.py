@@ -12,12 +12,12 @@ logger = logging.getLogger(__name__)
 
 
 class Service(BaseService):
-    def __init__(self, key_file=None, debug=False, mode='json', recvWindow=None):
-        super(Service, self).__init__('Binance', "https://api.binance.com/api", debug=debug, mode=mode)
+    def __init__(self, key=None, debug=False, mode='json', recv_window=None):
+        super(Service, self).__init__('binance', "https://api.binance.com/api", debug=debug)
+        self.mode = mode
         self.timestamp_unit = 'ms'
         self.default_api_version = 'v1'
-        self.recvWindow = 5000 if recvWindow is None else recvWindow
-        self.api_key, self.secret_key = self.read_key_file(key_file) if key_file is not None else (None, None)
+        self.recv_window = 5000 if recv_window is None else recv_window
 
     # region Helper methods
     @property
@@ -26,7 +26,7 @@ class Service(BaseService):
 
     def get_default_params(self, **kwargs):
         assert 'sign' in kwargs
-        return {'timestamp': self.timestamp, 'recvWindow': self.recvWindow} if kwargs['sign'] else {}
+        return {'timestamp': self.timestamp, 'recvWindow': self.recv_window} if kwargs['sign'] else {}
 
     def add_api_key(self, params=None, data=None, headers=None):
         """
@@ -48,6 +48,7 @@ class Service(BaseService):
         encoded = bytes(urllib.parse.urlencode(params) + urllib.parse.urlencode(data), 'utf-8')
         signature = hmac.new(self.secret_key, encoded, digestmod=hashlib.sha256)
         params['signature'] = signature.hexdigest()
+
     # endregion
 
     # region General Endpoints
@@ -147,7 +148,7 @@ class Service(BaseService):
         elif self.mode == 'json':
             return response.json()
 
-    def recent_trades(self, symbol: str, limit: int=None):
+    def recent_trades(self, symbol: str, limit: int = None):
         params = {'symbol': symbol}
         if limit is not None:
             params['limit'] = limit
@@ -163,7 +164,7 @@ class Service(BaseService):
         elif self.mode == 'json':
             return response.json()
 
-    def historical_trades(self, symbol: str, limit: int=None, from_id: int=None):
+    def historical_trades(self, symbol: str, limit: int = None, from_id: int = None):
         params = {'symbol': symbol}
         if limit is not None:
             params['limit'] = limit
@@ -223,7 +224,8 @@ class Service(BaseService):
             return response
         else:
             df = pd.DataFrame(response.json(), columns=['openTimestamp', 'open', 'high', 'low', 'close', 'volume',
-                                                        'closeTimestamp', 'quoteVolume', 'numTrades', 'takerBuyBaseVolume',
+                                                        'closeTimestamp', 'quoteVolume', 'numTrades',
+                                                        'takerBuyBaseVolume',
                                                         'takerBuyQuoteVolume', 'ignore'])
             df.pop('ignore')
             df = df.apply(pd.to_numeric)
@@ -234,7 +236,7 @@ class Service(BaseService):
             elif self.mode == 'json':
                 return json.loads(df.to_json(orient='records', date_format='iso'))
 
-    def ticker_24(self, symbol: str=None):
+    def ticker_24(self, symbol: str = None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
@@ -250,7 +252,7 @@ class Service(BaseService):
         elif self.mode == 'json':
             return response.json()
 
-    def ticker_price(self, symbol: str=None):
+    def ticker_price(self, symbol: str = None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
@@ -267,7 +269,7 @@ class Service(BaseService):
         elif self.mode == 'json':
             return response.json()
 
-    def ticker_book(self, symbol: str=None):
+    def ticker_book(self, symbol: str = None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
@@ -286,8 +288,8 @@ class Service(BaseService):
     # endregion
 
     # region Account Endpoints
-    def order(self, symbol, side, order_type, quantity, price: float=None, stop_price=None, time_in_force: str=None,
-              iceberg_qty: float=None, client_order_id: str=None, test=False):
+    def order(self, symbol, side, order_type, quantity, price: float = None, stop_price=None, time_in_force: str = None,
+              iceberg_qty: float = None, client_order_id: str = None, test=False):
         params = {}
         side = side.upper()
         order_type = order_type.upper()
@@ -443,7 +445,7 @@ class Service(BaseService):
         elif self.mode == 'json':
             return response.json()
 
-    def trade_list(self, symbol, limit: int=None, from_id: int=None):
+    def trade_list(self, symbol, limit: int = None, from_id: int = None):
         params = {'symbol': symbol}
         if limit is not None:
             params['limit'] = limit
@@ -461,13 +463,3 @@ class Service(BaseService):
             return response.json()
 
     # endregion
-
-    pass
-
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    pd.options.display.float_format = '{:.10f}'.format
-
-    grabber = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance.apikey", recvWindow=20000)
-    # test_env = Service(key_file="G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance_test.apikey")

@@ -1,7 +1,0 @@
-{
-  "exchanges": ["simulation"],
-  "historical_exchange": "poloniex",
-  "project_directory": "G:\\Documents\\Python Scripts\\Crypto_Algotrader",
-  "pairs": ["BTC_ETH"],
-  "max_num_logs": 3
-}

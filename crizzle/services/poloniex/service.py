@@ -18,7 +18,7 @@ class Service(BaseService):
         pass
 
     def __init__(self, key_file=None):
-        super(Service, self).__init__('Poloniex', 'https://poloniex.com/', key_file=key_file)
+        super(Service, self).__init__('Poloniex', 'https://poloniex.com/', key=key_file)
 
     # region Request methods
     def request(self, request_type: str, endpoint: str, params=None,

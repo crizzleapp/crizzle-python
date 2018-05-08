@@ -11,7 +11,7 @@ class Feed(envs.DataGrabber):
     def __init__(self, name: str, key_file: str=None):
         super(Feed, self).__init__()
         self.name = name
-        self.data_directory = envs.get_local_data_dir()
+        self.data_directory = envs.get_data_dir()
         self.service = services.make(self.name, key_file=key_file)
         # TODO: replace multiple files with a single file.
         logger.debug("Initialised new feed '{}'.".format(self.name))
@@ -46,22 +46,3 @@ class Feed(envs.DataGrabber):
     @abstractmethod
     def next(self):
         pass
-
-    def __str__(self):
-        return "Feed instance '{}' ({})".format(self.name, 'not authenticated' if self.service.api_key is None else 'authenticated')
-
-
-if __name__ == '__main__':
-    class ConcreteFeed(Feed):
-        def update_local_historical_data(self):
-            pass
-
-        def next(self):
-            pass
-
-    key = 'G:\\Documents\\Python Scripts\\crizzle\\data\\keys\\binance_test.apikey'
-    data_dir = 'G:\\Documents\\Python Scripts\\crizzle\\data\\historical'
-    feed1 = ConcreteFeed('binance', key_file=key)
-    feed2 = ConcreteFeed('binance', key_file=key)
-    print(feed1.service is feed2.service)  # Check singleton
-    print(feed1.data_directory)  # Verify data directory

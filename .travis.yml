@@ -7,6 +7,8 @@ python:
 
 install:
   - pip install .
+  - pip install codecov
 
 script:
   - nosetests --nologcapture --with-coverage --cover-package=crizzle
+  - codecov
