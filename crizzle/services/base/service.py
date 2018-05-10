@@ -4,7 +4,9 @@ import json
 import logging
 import requests
 from abc import ABCMeta, abstractmethod
+
 from crizzle.patterns import assert_in
+import crizzle
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +15,6 @@ class Service(metaclass=ABCMeta):
     def __init__(self, name: str, root: str, key=None, default_api_version=None, debug=False):
         self.name = name
         self.root = root
-        self.key_loaded = False
-        self.api_key, self.secret_key = None, None
         self.default_api_version = default_api_version
         self.debug = debug
         self.load_key(key)
@@ -40,6 +40,47 @@ class Service(metaclass=ABCMeta):
             int: millisecond timestamp (by default)
         """
         return int(time.time() * 1000)
+
+    @property
+    def key(self):
+        env_var_name = 'CrizzleKey_{}'.format(self.name)
+        if env_var_name in os.environ:
+            return json.loads(os.environ[env_var_name])
+        else:
+            return {'key': None, 'secret': None}
+
+    @property
+    def api_key(self):
+        return self.key['key']
+
+    @property
+    def secret_key(self):
+        return self.key['secret']
+
+    @property
+    def key_loaded(self):
+        return self.api_key is not None and self.secret_key is not None
+
+    def load_key(self, key=None) -> None:
+        """
+        Loads the public and private API keys from a given file into self.api_key and self.secret_key.
+
+        Args:
+            key: Path to file containing API key and secret.
+            The two keys must be on different lines, and the file must contain exactly 2 lines.
+
+        Returns:
+            tuple: (API key, Secret key)
+        """
+        if key is None:
+            try:
+                env_var_name = 'CrizzleKey_{}'.format(self.name)
+                key = json.loads(os.environ[env_var_name])
+                self.load_key(key)
+            except KeyError:
+                logger.error("API key for service '{}' not found in environment variables.".format(self.name))
+        else:
+            crizzle.load_key(key, name=self.name)
 
     def get_default_params(self, **kwargs) -> dict:
         """
@@ -69,33 +110,6 @@ class Service(metaclass=ABCMeta):
             if params is not None:
                 final_params.update(params)
         return final_params
-
-    def load_key(self, key=None) -> None:
-        """
-        Loads the public and private API keys from a given file into self.api_key and self.secret_key.
-
-        Args:
-            key: Path to file containing API key and secret.
-            The two keys must be on different lines, and the file must contain exactly 2 lines.
-
-        Returns:
-            tuple: (API key, Secret key)
-        """
-        if key is not None:
-            if isinstance(key, str):
-                with open(key, 'r') as file:
-                    keys = json.load(file)
-                    self.api_key, self.secret_key = keys['key'], keys['secret']
-                self.key_loaded = True
-            elif isinstance(key, dict):
-                self.api_key, self.secret_key = key['key'], key['secret']
-                self.key_loaded = True
-        else:
-            try:
-                key = json.loads(os.environ['CrizzleKey_{}'.format(self.name)])
-                self.load_key(key)
-            except KeyError:
-                logger.error('API key for service {} not found in environment variables.'.format(self.name))
 
     def json_number_hook(self, inp):
         if isinstance(inp, list):
@@ -204,7 +218,9 @@ class Service(metaclass=ABCMeta):
                 try:
                     response.raise_for_status()
                 except requests.HTTPError as e:
-                    logger.exception("Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name, response.text))
+                    logger.exception(
+                        "Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name,
+                                                                                          response.text))
                 finally:
                     logger.debug('Queried {} at {}'.format(self.name, response.url))
                     return response

@@ -8,11 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class Feed(envs.DataGrabber):
-    def __init__(self, name: str, key_file: str=None):
+    def __init__(self, name: str):
         super(Feed, self).__init__()
         self.name = name
         self.data_directory = envs.get_data_dir()
-        self.service = services.make(self.name, key_file=key_file)
+        self.service = services.make(self.name)
         # TODO: replace multiple files with a single file.
         logger.debug("Initialised new feed '{}'.".format(self.name))
 

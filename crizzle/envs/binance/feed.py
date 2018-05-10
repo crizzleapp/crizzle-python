@@ -2,6 +2,7 @@ import os
 import time
 import json
 import logging
+
 from crizzle import patterns
 from crizzle.envs.base import Feed as BaseFeed
 from crizzle.services.binance import INTERVALS
@@ -10,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class Feed(BaseFeed):
-    def __init__(self, symbols: list = None, intervals: list = None, key_file: str = None):
-        super(Feed, self).__init__('binance', key_file=key_file)
+    def __init__(self, symbols: list = None, intervals: list = None):
+        super(Feed, self).__init__('binance')
         self.symbols = self.service.trading_symbols() if symbols is None else symbols
         self.intervals = INTERVALS if intervals is None else intervals
-        self.historical_filepath = self.filepath('historical')
+        self.historical_filepath = self.filepath('candlestick')
         self.initialize_file(self.historical_filepath)
 
     def initialize_file(self, filepath: str):

@@ -5,6 +5,7 @@ import urllib
 import logging
 import hashlib
 import pandas as pd
+
 from crizzle.services.base import Service as BaseService
 from crizzle import patterns
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class Service(BaseService):
     def __init__(self, key=None, debug=False, mode='json', recv_window=None):
-        super(Service, self).__init__('binance', "https://api.binance.com/api", debug=debug)
+        super(Service, self).__init__('binance', "https://api.binance.com/api", debug=debug, key=key)
         self.mode = mode
         self.timestamp_unit = 'ms'
         self.default_api_version = 'v1'
@@ -48,7 +49,7 @@ class Service(BaseService):
 
     def sign_request_data(self, params=None, data=None, headers=None):
         encoded = bytes(urllib.parse.urlencode(params) + urllib.parse.urlencode(data), 'utf-8')
-        signature = hmac.new(self.secret_key, encoded, digestmod=hashlib.sha256)
+        signature = hmac.new(bytes(self.secret_key, 'utf-8'), encoded, digestmod=hashlib.sha256)
         params['signature'] = signature.hexdigest()
 
     # endregion

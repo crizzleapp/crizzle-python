@@ -1,4 +1,8 @@
-Release: [![Build Status](https://travis-ci.org/tasercake/Crizzle.svg?branch=master)](https://travis-ci.org/tasercake/Crizzle) [![codecov](https://codecov.io/gh/tasercake/Crizzle/branch/master/graph/badge.svg)](https://codecov.io/gh/tasercake/Crizzle) Dev: [![Build Status](https://travis-ci.org/tasercake/Crizzle.svg?branch=dev)](https://travis-ci.org/tasercake/Crizzle)
+[![Generic badge](https://img.shields.io/badge/Branch-master-blue.svg)](https://github.com/tasercake/Crizzle) [![Build Status](https://img.shields.io/travis/tasercake/Crizzle/master.svg)](https://travis-ci.org/tasercake/Crizzle) [![codecov](https://img.shields.io/codecov/c/github/tasercake/Crizzle/master.svg)](https://codecov.io/gh/tasercake/Crizzle) 
+
+[![Generic badge](https://img.shields.io/badge/Branch-dev-blue.svg)](https://github.com/tasercake/Crizzle/tree/dev) [![Build Status](https://img.shields.io/travis/tasercake/Crizzle/dev.svg)](https://travis-ci.org/tasercake/Crizzle) [![codecov](https://img.shields.io/codecov/c/github/tasercake/Crizzle/dev.svg)](https://codecov.io/gh/tasercake/Crizzle)
+
+[![License](https://img.shields.io/github/license/tasercake/Crizzle.svg)](https://github.com/tasercake/Crizzle/blob/master/LICENSE.md)
 
 # Crizzle
 
