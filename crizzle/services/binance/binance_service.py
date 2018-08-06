@@ -1,3 +1,4 @@
+import os
 import time
 import hmac
 import json
@@ -12,15 +13,38 @@ from crizzle import patterns
 logger = logging.getLogger(__name__)
 
 
-class Service(BaseService):
-    def __init__(self, key=None, debug=False, mode='json', recv_window=None):
-        super(Service, self).__init__('binance', "https://api.binance.com/api", debug=debug, key=key)
+class BinanceService(BaseService):
+    def __init__(self, key=None, debug=False, mode='json', recv_window=None, name=None):
+        super(BinanceService, self).__init__('binance' if name is None else name,
+                                             "https://api.binance.com/api",
+                                             debug=debug,
+                                             key=key)
         self.mode = mode
         self.timestamp_unit = 'ms'
         self.default_api_version = 'v1'
         self.recv_window = 5000 if recv_window is None else recv_window
 
     # region Helper methods
+    @property
+    def key(self):
+        env_var_name = 'CrizzleKey_{}'.format(self.name)
+        if env_var_name in os.environ:
+            return json.loads(os.environ[env_var_name])
+        else:
+            return {'key': None, 'secret': None}
+
+    @property
+    def api_key(self):
+        return self.key['key']
+
+    @property
+    def secret_key(self):
+        return self.key['secret']
+
+    @property
+    def key_loaded(self):
+        return self.api_key and self.secret_key
+
     @property
     def timestamp(self) -> int:
         return int(1000 * (time.time() - 1))
@@ -31,12 +55,12 @@ class Service(BaseService):
 
     def add_api_key(self, params=None, data=None, headers=None):
         """
-        Adds API key to the request headers (in-place, does not create new copy of the request)
+        Adds API key to the request params/data/headers.
 
         Args:
-            params:
-            data:
-            headers:
+            params (dict): request params
+            data (dict): request data
+            headers (dict): request headers
 
         Returns:
             None
@@ -48,6 +72,17 @@ class Service(BaseService):
             logger.error("API key has not been loaded. Unable to add API key to request headers.")
 
     def sign_request_data(self, params=None, data=None, headers=None):
+        """
+        Sign the request params/data/headers with the secret key.
+
+        Args:
+            params (dict): request params
+            data (dict): request data
+            headers (dict): request headers
+
+        Returns:
+
+        """
         encoded = bytes(urllib.parse.urlencode(params) + urllib.parse.urlencode(data), 'utf-8')
         signature = hmac.new(bytes(self.secret_key, 'utf-8'), encoded, digestmod=hashlib.sha256)
         params['signature'] = signature.hexdigest()
@@ -130,10 +165,6 @@ class Service(BaseService):
             symbol: Which trading symbol to get depth info for
             limit: Number of price points to aggregate orders into
 
-        Returns:
-            dict: 'asks' - Dataframe of asks depth
-            'bids': Dataframe of bids depth
-            'last': Last update ID
         """
         params = {"symbol": symbol}
         if limit is not None:
@@ -300,8 +331,8 @@ class Service(BaseService):
         if time_in_force is not None:
             time_in_force = time_in_force.upper()
         if price is not None:
+            print(type(price))
             price = patterns.conversion.float_to_str(price)
-            print(price)
         if order_type == 'LIMIT':
             try:
                 patterns.assert_none(stop_price, 'stop_price')

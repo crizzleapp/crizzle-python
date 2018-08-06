@@ -1,20 +1,15 @@
 import os
 import requests
+from crizzle.services.binance import BinanceService
 
-from crizzle.services.binance import Service
-from crizzle import load_key
-
-svc = Service(debug=True)
-test_svc = Service(key={
-    "key": "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
-    "secret": "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j"
-}, debug=True)
+svc = BinanceService(debug=True)
+svc.load_key("G:\\Documents\\CrizzleData\\keys\\binance.json")
+test_svc = BinanceService(debug=True, name='binancetest')
+test_svc.load_key("G:\\Documents\\CrizzleData\\keys\\binance_test.json")
 
 
 def test_key_loaded():
     assert test_svc.key_loaded
-    if 'CrizzleKey_binance' not in os.environ:
-        load_key('G:\\Documents\\CrizzleData\\keys\\binance.json')
     assert svc.key_loaded
 
 
@@ -78,12 +73,14 @@ def test_order():
 
 
 def test_test_order():
-    response = svc.test_order('ETHBTC', 'BUY', 'LIMIT', 0.013, price='0.08', time_in_force='GTC')
+    response = svc.test_order('ETHBTC', 'BUY', 'LIMIT', 0.013, price=0.08, time_in_force='GTC')
+    print(response.request.url)
     assert response.status_code == 200
 
 
 def test_open_orders():
     response = svc.open_orders('ETHBTC')
+    print(response.content)
     assert response.status_code == 200
 
 

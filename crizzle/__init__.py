@@ -11,19 +11,30 @@ logger = logging.getLogger(__name__)
 
 
 def load_key(key, name=None):
-    try:
+    """
+    Load contents of key to an environment variable.
+
+    Args:
+        key (Union[str, dict]): Path to a file containing the key in JSON format, OR a dict containing the key.
+        name: Name of the service which the key belongs to.
+
+    Returns:
+        None
+    """
+    try:  # assume key is a file path (str)
         with open(key) as file:
-            env_variable_name = 'CrizzleKey_{}'.format(os.path.splitext(os.path.split(key)[-1])[0])
+            alt_name = os.path.splitext(os.path.split(key)[-1])[0]
+            env_variable_name = 'CrizzleKey_{}'.format(alt_name)
             os.environ[env_variable_name] = file.read()
-    except (FileNotFoundError, TypeError):
-        try:
+    except (FileNotFoundError, TypeError):  # if key is not a file path
+        try:  # assume key is a dict
             assert name is not None
             env_variable_name = 'CrizzleKey_{}'.format(name)
-            os.environ[env_variable_name] = key if isinstance(key, str) else json.dumps(key)
+            os.environ[env_variable_name] = json.dumps(key)
         except AssertionError:
             logger.error('Must provide service name if key is not a file path.')
         except json.JSONDecodeError:
-            logger.error('Could not read contents of key.')
+            logger.error('Could not parse contents of key dict.')
 
 
 def load_config(path):
