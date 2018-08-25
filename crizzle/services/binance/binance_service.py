@@ -115,20 +115,17 @@ class BinanceService(BaseService):
         return self.get("exchangeInfo")
 
     def trading_assets(self):
-        """
-
-
-        Returns:
-
-        """
         symbols = self.info(key='symbols')
-        assets = set()
-        for symbol in symbols:
-            base = symbol['baseAsset']
-            quote = symbol['quoteAsset']
-            assets.add(base)
-            assets.add(quote)
-        return assets
+        if self.debug:
+            return symbols
+        else:
+            assets = set()
+            for symbol in symbols:
+                base = symbol['baseAsset']
+                quote = symbol['quoteAsset']
+                assets.add(base)
+                assets.add(quote)
+            return assets
 
     def trading_symbols(self):
         """
