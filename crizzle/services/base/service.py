@@ -11,12 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 class Service(metaclass=ABCMeta):
-    def __init__(self, name: str, root: str, key=None, default_api_version=None, debug=False):
+    def __init__(self, name: str, root: str, key=None, default_api_version=None,
+                 debug=False, default_timestamp=None):
+        """
+
+        Args:
+            name:
+            root:
+            key:
+            default_api_version:
+            debug:
+        """
         self.name = name
         self.root = root
         self.default_api_version = default_api_version
         self.debug = debug
+        self.default_timestamp = default_timestamp
         self.load_key(key)
+        self.session = requests.Session()
         logger.debug("Initialized {} environment".format(name))
 
     # region Helper methods
@@ -40,6 +52,7 @@ class Service(metaclass=ABCMeta):
         Returns:
             None
         """
+        # TODO: is using env variables to store keys secure?
         env_variable_name = 'CrizzleKey_{}'.format(self.name)
         if key is None:
             if env_variable_name not in os.environ:
@@ -57,7 +70,6 @@ class Service(metaclass=ABCMeta):
                             key))
             elif isinstance(key, dict):  # assume key is a dict
                 try:
-                    env_variable_name = 'CrizzleKey_{}'.format(self.name)
                     os.environ[env_variable_name] = json.dumps(key)
                 except json.JSONDecodeError:
                     logger.error('Could not parse contents of key dict.')
@@ -202,7 +214,7 @@ class Service(metaclass=ABCMeta):
 
         # TODO: implement rate limiter
 
-        with requests.Session() as session:
+        with self.session as session:
             try:
                 assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
             except ValueError:

@@ -5,8 +5,6 @@ import json
 import urllib
 import logging
 import hashlib
-import pandas as pd
-
 from crizzle.services.base import Service as BaseService
 from crizzle import patterns
 
@@ -14,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class BinanceService(BaseService):
-    def __init__(self, key=None, debug=False, mode='json', recv_window=None, name=None):
+    def __init__(self, key=None, debug=False, mode='json', recv_window=None, name=None, default_timestamp=None):
         super(BinanceService, self).__init__('binance' if name is None else name,
                                              "https://api.binance.com/api",
                                              debug=debug,
+                                             default_timestamp=default_timestamp,
                                              key=key)
         self.mode = mode
         self.timestamp_unit = 'ms'
@@ -47,7 +46,10 @@ class BinanceService(BaseService):
 
     @property
     def timestamp(self) -> int:
-        return int(1000 * (time.time() - 1))
+        if self.debug:
+            return self.default_timestamp
+        else:
+            return int(1000 * (time.time() - 1))
 
     def get_default_params(self, **kwargs):
         assert 'sign' in kwargs
@@ -94,11 +96,7 @@ class BinanceService(BaseService):
         return self.get('ping')
 
     def server_time(self):
-        response = self.get("time")
-        if self.debug:
-            return response
-        else:
-            return response.json()['serverTime']
+        return self.get("time")
 
     def info(self, symbol=None, key=None):
         """
@@ -114,16 +112,7 @@ class BinanceService(BaseService):
         Returns:
 
         """
-        response = self.get('exchangeInfo')
-        if self.debug:
-            return response.json()
-        else:
-            if symbol is None:
-                return response if key is None else response.json()[key]
-            else:
-                for pair in response.json()['symbols']:
-                    if pair['symbol'] == symbol:
-                        return pair if key is None else pair[key]
+        return self.get("exchangeInfo")
 
     def trading_assets(self):
         """
@@ -146,13 +135,16 @@ class BinanceService(BaseService):
         Get a list of all symbols trading on the exchange.
 
         Returns:
-            list: Symbols trading on the exchange.
+            Symbols trading on the exchange.
         """
         symbols = []
         symbol_info = self.info(key='symbols')
-        for symbol in symbol_info:
-            symbols.append(symbol['symbol'])
-        return symbols
+        if self.debug:
+            return symbol_info
+        else:
+            for symbol in symbol_info:
+                symbols.append(symbol['symbol'])
+            return symbols
 
     # endregion
 
@@ -170,34 +162,14 @@ class BinanceService(BaseService):
         if limit is not None:
             params["limit"] = limit
         response = self.get("depth", params=params)
-        if self.debug:
-            return response
-        else:
-            if self.mode == 'pandas':
-                data = response.json()
-                asks = pd.DataFrame(data['asks'], columns=['price', 'quantity', 'ignore'], dtype=float)
-                asks.pop('ignore')
-                bids = pd.DataFrame(data['bids'], columns=['price', 'quantity', 'ignore'], dtype=float)
-                bids.pop('ignore')
-                return {'asks': asks, 'bids': bids, 'last': data['lastUpdateId']}
-            elif self.mode == 'json':
-                return response.json()
+        return response
 
     def recent_trades(self, symbol: str, limit: int = None):
         params = {'symbol': symbol}
         if limit is not None:
             params['limit'] = limit
         response = self.get('trades', params=params)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            df = pd.DataFrame(response.json())
-            df['timestamp'] = df['time']
-            df['time'] = pd.to_datetime(df['time'], unit=self.timestamp_unit)
-            df[['price', 'quantity']] = df[['price', 'quantity']].astype(float)
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def historical_trades(self, symbol: str, limit: int = None, from_id: int = None):
         params = {'symbol': symbol}
@@ -206,16 +178,7 @@ class BinanceService(BaseService):
         if from_id is not None:
             params['fromId'] = from_id
         response = self.get('historicalTrades', params=params)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            df = pd.DataFrame(response.json())
-            df['timestamp'] = df['time']
-            df['time'] = pd.to_datetime(df['time'], unit=self.timestamp_unit)
-            df[['price', 'quantity']] = df[['price', 'quantity']].astype(float)
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def aggregated_trades(self, symbol: str, from_id: int = None, start: int = None, end: int = None,
                           limit: int = None):
@@ -229,22 +192,7 @@ class BinanceService(BaseService):
         if limit is not None:
             params['limit'] = limit
         response = self.get('aggTrades', params=params)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            df = pd.DataFrame(response.json())
-            df['id'] = df.pop('a')
-            df['price'] = df.pop('p').astype(float)
-            df['quantity'] = df.pop('q').astype(float)
-            df['firstId'] = df.pop('f')
-            df['lastId'] = df.pop('l')
-            df['timestamp'] = df.pop('T')
-            df['time'] = pd.to_datetime(df['timestamp'], unit=self.timestamp_unit)
-            df['isBuyerMaker'] = df.pop('m')
-            df['isBestMatch'] = df.pop('M')
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def candlesticks(self, symbol: str, interval: str, limit=None, start=None, end=None):
         params = {"symbol": symbol, "interval": interval}
@@ -255,70 +203,28 @@ class BinanceService(BaseService):
         if limit is not None:
             params['limit'] = limit
         response = self.get("klines", params=params)
-        if self.debug:
-            return response
-        else:
-            df = pd.DataFrame(response.json(), columns=['openTimestamp', 'open', 'high', 'low', 'close', 'volume',
-                                                        'closeTimestamp', 'quoteVolume', 'numTrades',
-                                                        'takerBuyBaseVolume',
-                                                        'takerBuyQuoteVolume', 'ignore'])
-            df.pop('ignore')
-            df = df.apply(pd.to_numeric)
-            df['openTime'] = pd.to_datetime(df['openTimestamp'], unit=self.timestamp_unit)
-            df['closeTime'] = pd.to_datetime(df['closeTimestamp'], unit=self.timestamp_unit)
-            if self.mode == 'pandas':
-                return df
-            elif self.mode == 'json':
-                return json.loads(df.to_json(orient='records', date_format='iso'))
+        return response
 
     def ticker_24(self, symbol: str = None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
         response = self.get("ticker/24hr", params=params)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            if symbol is not None:
-                df = pd.DataFrame(response.json(), index=[0])
-            else:
-                df = pd.DataFrame(response.json())
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def ticker_price(self, symbol: str = None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
         response = self.get("ticker/price", params=params, api_version='v3')
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            if symbol is None:
-                df = pd.DataFrame(response.json())
-            else:
-                df = pd.DataFrame(response.json(), index=[0])
-            df.price = df.price.astype('float')
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def ticker_book(self, symbol: str = None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
         response = self.get("ticker/bookTicker", params=params, api_version='v3')
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            if symbol is not None:
-                df = pd.DataFrame(response.json(), index=[0])
-            else:
-                df = pd.DataFrame(response.json())
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     # endregion
 
@@ -331,7 +237,6 @@ class BinanceService(BaseService):
         if time_in_force is not None:
             time_in_force = time_in_force.upper()
         if price is not None:
-            print(type(price))
             price = patterns.conversion.float_to_str(price)
         if order_type == 'LIMIT':
             try:
@@ -391,20 +296,14 @@ class BinanceService(BaseService):
             raise e
         params.update({'symbol': symbol, 'type': order_type, 'quantity': quantity, 'side': side})
         response = self.post('order{}'.format('/test' if test else ''), api_version='v3', params=params, sign=True)
-        if self.debug:
-            return response
-        else:
-            return response.json()
+        return response
 
     def test_order(self, symbol, side, order_type, quantity, price=None, stop_price=None, time_in_force=None,
                    iceberg_qty=None, client_order_id=None):
         response = self.order(symbol, side, order_type, quantity, price=price, stop_price=stop_price,
                               time_in_force=time_in_force, iceberg_qty=iceberg_qty,
                               client_order_id=client_order_id, test=True)
-        if self.debug:
-            return response
-        else:
-            return response.content
+        return response
 
     def cancel_order(self, symbol: str, order_id=None, original_client_order_id=None, new_client_order_id=None):
         params = {'symbol': symbol}
@@ -417,10 +316,7 @@ class BinanceService(BaseService):
         if new_client_order_id is not None:
             params['newClientOrderId'] = new_client_order_id
         response = self.delete('order', api_version='v3', params=params)
-        if self.debug:
-            return response
-        else:
-            return response.json()
+        return response
 
     def query_order(self, symbol: str, order_id=None, original_client_order_id=None):
         params = {'symbol': symbol}
@@ -431,25 +327,14 @@ class BinanceService(BaseService):
         elif original_client_order_id is not None:
             params['origClientOrderId'] = original_client_order_id
         response = self.get('order', api_version='v3', params=params, sign=True)
-        if self.debug:
-            return response
-        else:
-            return response.json()
+        return response
 
     def open_orders(self, symbol=None):
         params = {}
         if symbol is not None:
             params['symbol'] = symbol
         response = self.get('openOrders', api_version='v3', params=params, sign=True)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            df = pd.DataFrame(response.json())
-            df['timestamp'] = df['time']
-            df['time'] = pd.to_datetime(df['time'], unit='ms')
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def all_orders(self, symbol, order_id=None, limit=None):
         params = {'symbol': symbol}
@@ -458,27 +343,11 @@ class BinanceService(BaseService):
         if limit is not None:
             params['limit'] = limit
         response = self.get('allOrders', api_version='v3', params=params, sign=True)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            df = pd.DataFrame(response.json())
-            df['timestamp'] = df['time']
-            df['time'] = pd.to_datetime(df['time'])
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def account_info(self):
         response = self.get('account', api_version='v3', params=None, sign=True)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            data = response.json()
-            df = pd.DataFrame(data['balances'])
-            df['time'] = pd.to_datetime(df['timestamp'])
-            return data
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     def trade_list(self, symbol, limit: int = None, from_id: int = None):
         params = {'symbol': symbol}
@@ -487,14 +356,6 @@ class BinanceService(BaseService):
         if from_id is not None:
             params['fromId'] = from_id
         response = self.get('myTrades', api_version='v3', params=params, sign=True)
-        if self.debug:
-            return response
-        elif self.mode == 'pandas':
-            df = pd.DataFrame(response.json())
-            df['timestamp'] = df['time']
-            df['time'] = pd.to_datetime(df['time'], unit='ms')
-            return df
-        elif self.mode == 'json':
-            return response.json()
+        return response
 
     # endregion
