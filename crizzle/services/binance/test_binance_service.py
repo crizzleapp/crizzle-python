@@ -1,7 +1,9 @@
 import requests
+from nose.tools import assert_raises
 from crizzle.services.binance import BinanceService
 
 default_timestamp = 1499827319559
+unsigned_svc = BinanceService(debug=True, name='binanceunsigned', default_timestamp=default_timestamp)
 svc = BinanceService(debug=True, name='binancetest', default_timestamp=default_timestamp)
 svc.load_key({
     "key": "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
@@ -11,6 +13,10 @@ svc.load_key({
 
 def test_key_loaded():
     assert svc.key_loaded
+
+
+def test_unsigned():
+    assert_raises(RuntimeError, unsigned_svc.get, 'dummy', sign=True)
 
 
 def test_authenticate_request():
@@ -34,33 +40,97 @@ def test_server_time():
     assert response.url == '{}/v1/time'.format(svc.root)
 
 
-def test_depth():
+def test_depth_1():
     response = svc.depth('ETHBTC')
     assert response.method == 'GET'
     assert response.url == '{}/v1/depth?symbol=ETHBTC'.format(svc.root)
 
 
-def test_recent_trades():
+def test_depth_2():
+    response = svc.depth('ETHBTC', limit=100)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/depth?symbol=ETHBTC&limit=100'.format(svc.root)
+
+
+def test_recent_trades_1():
     response = svc.recent_trades('ETHBTC')
     assert response.method == 'GET'
     assert response.url == '{}/v1/trades?symbol=ETHBTC'.format(svc.root)
 
 
-def test_historical_trades():
+def test_recent_trades_2():
+    response = svc.recent_trades('ETHBTC', limit=100)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/trades?symbol=ETHBTC&limit=100'.format(svc.root)
+
+
+def test_historical_trades_1():
     response = svc.historical_trades('ETHBTC')
     assert response.url == '{}/v1/historicalTrades?symbol=ETHBTC'.format(svc.root)
 
 
-def test_aggregated_trades():
+def test_historical_trades_2():
+    response = svc.historical_trades('ETHBTC', limit=100)
+    assert response.url == '{}/v1/historicalTrades?symbol=ETHBTC&limit=100'.format(svc.root)
+
+
+def test_historical_trades_3():
+    response = svc.historical_trades('ETHBTC', from_id=12345678)
+    assert response.url == '{}/v1/historicalTrades?symbol=ETHBTC&fromId=12345678'.format(svc.root)
+
+
+def test_aggregated_trades_1():
     response = svc.aggregated_trades('ETHBTC')
     assert response.method == 'GET'
     assert response.url == '{}/v1/aggTrades?symbol=ETHBTC'.format(svc.root)
 
 
-def test_candlesticks():
+def test_aggregated_trades_2():
+    response = svc.aggregated_trades('ETHBTC', from_id=12345678)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/aggTrades?symbol=ETHBTC&fromId=12345678'.format(svc.root)
+
+
+def test_aggregated_trades_3():
+    response = svc.aggregated_trades('ETHBTC', limit=100)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/aggTrades?symbol=ETHBTC&limit=100'.format(svc.root)
+
+
+def test_aggregated_trades_4():
+    response = svc.aggregated_trades('ETHBTC', start=default_timestamp)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/aggTrades?symbol=ETHBTC&startTime={}'.format(svc.root, default_timestamp)
+
+
+def test_aggregated_trades_5():
+    response = svc.aggregated_trades('ETHBTC', end=default_timestamp)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/aggTrades?symbol=ETHBTC&endTime={}'.format(svc.root, default_timestamp)
+
+
+def test_candlesticks_1():
     response = svc.candlesticks('ETHBTC', '1h')
     assert response.method == 'GET'
     assert response.url == '{}/v1/klines?symbol=ETHBTC&interval=1h'.format(svc.root)
+
+
+def test_candlesticks_2():
+    response = svc.candlesticks('ETHBTC', '1h', limit=100)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/klines?symbol=ETHBTC&interval=1h&limit=100'.format(svc.root)
+
+
+def test_candlesticks_3():
+    response = svc.candlesticks('ETHBTC', '1h', start=default_timestamp)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/klines?symbol=ETHBTC&interval=1h&startTime={}'.format(svc.root, default_timestamp)
+
+
+def test_candlesticks_4():
+    response = svc.candlesticks('ETHBTC', '1h', end=default_timestamp)
+    assert response.method == 'GET'
+    assert response.url == '{}/v1/klines?symbol=ETHBTC&interval=1h&endTime={}'.format(svc.root, default_timestamp)
 
 
 def test_ticker_24():
@@ -121,6 +191,27 @@ def test_order_limit_maker():
                            '51fade48fa05acd8d64a0395de0829f9d5b7c20b51cfc84bed8c4d1c9ffd2d0c'.format(svc.root)
 
 
+def test_order_iceberg():
+    response = svc.order('ETHBTC', 'BUY', 'LIMIT', 5, price=0.002, time_in_force='GTC', iceberg_qty=3)
+    assert response.method == 'POST'
+    assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000&timeInForce=GTC&price=0.002' \
+                           '&icebergQty=3&symbol=ETHBTC&type=LIMIT&quantity=5&side=BUY&signature=' \
+                           '9d519f6500fdfe121455ecdcaa62209f5e539a7e7b3b3978383794aa8f30bf3f'.format(svc.root)
+
+
+def test_order_client_order_id():
+    response = svc.order('ETHBTC', 'BUY', 'LIMIT', 5, price=0.002, time_in_force='GTC', new_client_order_id=12345678)
+    assert response.method == 'POST'
+    print(response.url)
+    assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000&timeInForce=GTC&price=0.002' \
+                           '&newClientOrderId=12345678&symbol=ETHBTC&type=LIMIT&quantity=5&side=BUY&signature=' \
+                           '1bc4e44e37af4935bae132bd33aa296005da97322b49834eaf043c218f4385f0'.format(svc.root)
+
+
+def test_order_invalid_type():
+    assert_raises(ValueError, svc.order, 'ETHBTC', 'BUY', 'SOME_ORDER_TYPE', 5, price=0.002, time_in_force='GTC')
+
+
 def test_test_order():
     response = svc.test_order('ETHBTC', 'BUY', 'LIMIT', 0.013, price=0.08, time_in_force='GTC')
     assert response.method == 'POST'
@@ -129,25 +220,87 @@ def test_test_order():
                            'f501cd2b87a85f45601af12f7b581f2c367933d63144b1e9d712a1e0b9183db4'.format(svc.root)
 
 
-def test_cancel_order():
-    response = svc.cancel_order('ETHBTC', 12345678)
+def test_query_order_1():
+    assert_raises(ValueError, svc.query_order, 'ETHBTC')
+
+
+def test_query_order_2():
+    response = svc.query_order('ETHBTC', order_id=12345678)
+    assert response.method == 'GET'
+    assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&orderId=12345678&signature=' \
+                           'c588372e8e7b62ef68a9395fd1470d6e65c82db0ec566552da35a010ea67e44f'.format(svc.root)
+
+
+def test_query_order_3():
+    response = svc.query_order('ETHBTC', original_client_order_id=12345678)
+    assert response.method == 'GET'
+    assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&origClientOrderId=12345678&signature=' \
+                           'e4269452dcd8e3b2ce4b09f96fe5cf35578677d053f76a90540f047b5be9302f'.format(svc.root)
+
+
+def test_cancel_order_1():
+    response = svc.cancel_order('ETHBTC', order_id=12345678)
     assert response.method == 'DELETE'
     assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000' \
                            '&symbol=ETHBTC&orderId=12345678&signature=' \
                            'c588372e8e7b62ef68a9395fd1470d6e65c82db0ec566552da35a010ea67e44f'.format(svc.root)
 
 
-def test_open_orders():
+def test_cancel_order_2():
+    assert_raises(ValueError, svc.cancel_order, 'ETHBTC')
+
+
+def test_cancel_order_3():
+    response = svc.cancel_order('ETHBTC', original_client_order_id=12345678)
+    assert response.method == 'DELETE'
+    assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&origClientOrderId=12345678&signature=' \
+                           'e4269452dcd8e3b2ce4b09f96fe5cf35578677d053f76a90540f047b5be9302f'.format(svc.root)
+
+
+def test_cancel_order_4():
+    response = svc.cancel_order('ETHBTC', order_id=12345678, new_client_order_id=12345678)
+    assert response.method == 'DELETE'
+    assert response.url == '{}/v3/order?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&orderId=12345678&newClientOrderId=12345678&signature=' \
+                           'ae696312a26875f952b6fe9cebefeafc1c0fc3ee7d60ec3cd399d4f341d505cb'.format(svc.root)
+
+
+def test_open_orders_1():
+    response = svc.open_orders()
+    assert response.url == '{}/v3/openOrders?timestamp=1499827319559&recvWindow=5000&signature=' \
+                           '6cd35332399b004466463b9ad65a112a14f31fb9ddfd5e19bd7298fbd491dbc7'.format(svc.root)
+
+
+def test_open_orders_2():
     response = svc.open_orders('ETHBTC')
     assert response.url == '{}/v3/openOrders?timestamp=1499827319559&recvWindow=5000&symbol=ETHBTC&signature=' \
                            'be21311f12ce93e39943125c586227c53489db5c708c9c26bc951f4da9933a7b'.format(svc.root)
 
 
-def test_all_orders():
+def test_all_orders_1():
     response = svc.all_orders('ETHBTC')
     assert response.method == 'GET'
     assert response.url == '{}/v3/allOrders?timestamp=1499827319559&recvWindow=5000&symbol=ETHBTC&signature=' \
                            'be21311f12ce93e39943125c586227c53489db5c708c9c26bc951f4da9933a7b'.format(svc.root)
+
+
+def test_all_orders_2():
+    response = svc.all_orders('ETHBTC', order_id=12345678)
+    assert response.method == 'GET'
+    assert response.url == '{}/v3/allOrders?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&orderId=12345678&signature=' \
+                           'c588372e8e7b62ef68a9395fd1470d6e65c82db0ec566552da35a010ea67e44f'.format(svc.root)
+
+
+def test_all_orders_3():
+    response = svc.all_orders('ETHBTC', limit=100)
+    assert response.method == 'GET'
+    assert response.url == '{}/v3/allOrders?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&limit=100&signature=' \
+                           '0ccef5fb771a9f7d5e2325e14ca5ff6931b09ed546832a04602aaf57f9eddf2b'.format(svc.root)
 
 
 def test_account_info():
@@ -157,11 +310,27 @@ def test_account_info():
                            '6cd35332399b004466463b9ad65a112a14f31fb9ddfd5e19bd7298fbd491dbc7'.format(svc.root)
 
 
-def test_trade_list():
+def test_trade_list_1():
     response = svc.trade_list('ETHBTC')
     assert response.method == 'GET'
     assert response.url == '{}/v3/myTrades?timestamp=1499827319559&recvWindow=5000&symbol=ETHBTC&signature=' \
                            'be21311f12ce93e39943125c586227c53489db5c708c9c26bc951f4da9933a7b'.format(svc.root)
+
+
+def test_trade_list_2():
+    response = svc.trade_list('ETHBTC', limit=100)
+    assert response.method == 'GET'
+    assert response.url == '{}/v3/myTrades?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&limit=100&signature=' \
+                           '0ccef5fb771a9f7d5e2325e14ca5ff6931b09ed546832a04602aaf57f9eddf2b'.format(svc.root)
+
+
+def test_trade_list_3():
+    response = svc.trade_list('ETHBTC', from_id=12345678)
+    assert response.method == 'GET'
+    assert response.url == '{}/v3/myTrades?timestamp=1499827319559&recvWindow=5000' \
+                           '&symbol=ETHBTC&fromId=12345678&signature=' \
+                           '44adee218756ab394470dd86df67178e37fc67c4d2c380e1385a627f010bf0bb'.format(svc.root)
 
 
 def test_trading_symbols():
@@ -170,7 +339,7 @@ def test_trading_symbols():
     assert response.url == '{}/v1/exchangeInfo'.format(svc.root)
 
 
-def trading_assets():
+def test_trading_assets():
     response = svc.trading_assets()
     assert response.method == 'GET'
     assert response.url == '{}/v1/exchangeInfo'.format(svc.root)

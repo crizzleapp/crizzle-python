@@ -56,9 +56,9 @@ class Service(metaclass=ABCMeta):
         env_variable_name = 'CrizzleKey_{}'.format(self.name)
         if key is None:
             if env_variable_name not in os.environ:
-                logger.error("API key for service '{}' not found in environment variables. "
-                             "Functionality will be limited. "
-                             "Use `svc.load_key(dict_or_filepath)` to load a key".format(self.name))
+                logger.warning("API key for service '{}' not found in environment variables. "
+                               "Functionality will be limited. "
+                               "Use `svc.load_key(dict_or_filepath)` to load a key".format(self.name))
         else:
             if isinstance(key, str):  # assume key is a file path (str)
                 try:
