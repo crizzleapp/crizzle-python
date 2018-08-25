@@ -15,7 +15,7 @@ class Feed(BaseFeed):
         super(Feed, self).__init__('binance')
         self.symbols = self.service.trading_symbols() if symbols is None else symbols
         self.intervals = INTERVALS if intervals is None else intervals
-        self.historical_filepath = self.filepath('candlestick')
+        self.historical_filepath = self.get_path('candlestick')
         self.initialize_file(self.historical_filepath)
 
     def initialize_file(self, filepath: str):
@@ -26,7 +26,7 @@ class Feed(BaseFeed):
             except json.decoder.JSONDecodeError:
                 file.write('{}')
 
-    def filepath(self, data_type: str) -> str:
+    def get_path(self, data_type: str) -> str:
         """
         Get the name of the file to store the historical data in
 

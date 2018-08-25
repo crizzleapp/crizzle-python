@@ -6,21 +6,74 @@ import requests
 from abc import ABCMeta, abstractmethod
 
 from crizzle.patterns import assert_in
-import crizzle
 
 logger = logging.getLogger(__name__)
 
 
 class Service(metaclass=ABCMeta):
-    def __init__(self, name: str, root: str, key=None, default_api_version=None, debug=False):
+    def __init__(self, name: str, root: str, key=None, default_api_version=None,
+                 debug=False, default_timestamp=None):
+        """
+
+        Args:
+            name:
+            root:
+            key:
+            default_api_version:
+            debug:
+        """
         self.name = name
         self.root = root
         self.default_api_version = default_api_version
         self.debug = debug
+        self.default_timestamp = default_timestamp
         self.load_key(key)
+        self.session = requests.Session()
         logger.debug("Initialized {} environment".format(name))
 
     # region Helper methods
+    @property
+    @abstractmethod
+    def key(self):
+        pass
+
+    @property
+    @abstractmethod
+    def key_loaded(self):
+        pass
+
+    def load_key(self, key) -> None:
+        """
+        Check if key is in env variables, else load from file or dict.
+
+        Args:
+            key (str/dict): File or dict to load key from
+
+        Returns:
+            None
+        """
+        # TODO: is using env variables to store keys secure?
+        env_variable_name = 'CrizzleKey_{}'.format(self.name)
+        if key is None:
+            if env_variable_name not in os.environ:
+                logger.warning("API key for service '{}' not found in environment variables. "
+                               "Functionality will be limited. "
+                               "Use `svc.load_key(dict_or_filepath)` to load a key".format(self.name))
+        else:
+            if isinstance(key, str):  # assume key is a file path (str)
+                try:
+                    with open(key) as file:
+                        os.environ[env_variable_name] = file.read()
+                except FileNotFoundError:
+                    logger.error(
+                        "Could not find file at {}. When running on a remote machine, this is not an error.".format(
+                            key))
+            elif isinstance(key, dict):  # assume key is a dict
+                try:
+                    os.environ[env_variable_name] = json.dumps(key)
+                except json.JSONDecodeError:
+                    logger.error('Could not parse contents of key dict.')
+
     @property
     def timestamp(self) -> int:
         """
@@ -41,58 +94,18 @@ class Service(metaclass=ABCMeta):
         """
         return int(time.time() * 1000)
 
-    @property
-    def key(self):
-        env_var_name = 'CrizzleKey_{}'.format(self.name)
-        if env_var_name in os.environ:
-            return json.loads(os.environ[env_var_name])
-        else:
-            return {'key': None, 'secret': None}
-
-    @property
-    def api_key(self):
-        return self.key['key']
-
-    @property
-    def secret_key(self):
-        return self.key['secret']
-
-    @property
-    def key_loaded(self):
-        return self.api_key is not None and self.secret_key is not None
-
-    def load_key(self, key=None) -> None:
-        """
-        Loads the public and private API keys from a given file into self.api_key and self.secret_key.
-
-        Args:
-            key: Path to file containing API key and secret.
-            The two keys must be on different lines, and the file must contain exactly 2 lines.
-
-        Returns:
-            tuple: (API key, Secret key)
-        """
-        if key is None:
-            try:
-                env_var_name = 'CrizzleKey_{}'.format(self.name)
-                key = json.loads(os.environ[env_var_name])
-                self.load_key(key)
-            except KeyError:
-                logger.error("API key for service '{}' not found in environment variables.".format(self.name))
-        else:
-            crizzle.load_key(key, name=self.name)
-
+    @abstractmethod
     def get_default_params(self, **kwargs) -> dict:
         """
         Creates a dictionary of paramters to be sent by default along with every request
 
         Args:
-            **kwargs: Keywork arguments that may be used to determine the default parameters
+            **kwargs: Keyword arguments used to determine the default parameters
 
         Returns:
             dict: Default parameter dictionary
         """
-        return {}
+        return kwargs
 
     def get_params(self, **kwargs) -> dict:
         """
@@ -110,6 +123,36 @@ class Service(metaclass=ABCMeta):
             if params is not None:
                 final_params.update(params)
         return final_params
+
+    @abstractmethod
+    def sign_request_data(self, params=None, data=None, headers=None):
+        """
+        Sign the request params/data/headers with the secret key in accordance with the API spec.
+
+        Args:
+            params (dict): request params
+            data (dict): request data
+            headers (dict): request headers
+
+        Returns:
+
+        """
+        pass
+
+    @abstractmethod
+    def add_api_key(self, params=None, data=None, headers=None):
+        """
+        Adds API key to the request params/data/headers in accordance with the API spec.
+
+        Args:
+            params (dict): request params
+            data (dict): request data
+            headers (dict): request headers
+
+        Returns:
+            None
+        """
+        pass
 
     def json_number_hook(self, inp):
         if isinstance(inp, list):
@@ -139,36 +182,6 @@ class Service(metaclass=ABCMeta):
                     except (ValueError, TypeError):
                         pass
         return inp
-
-    @abstractmethod
-    def sign_request_data(self, params=None, data=None, headers=None):
-        """
-        Sign the request with the secret key.
-
-        Args:
-            params:
-            data:
-            headers:
-
-        Returns:
-
-        """
-        pass
-
-    @abstractmethod
-    def add_api_key(self, params=None, data=None, headers=None):
-        """
-        Adds API key to the request object.
-
-        Args:
-            data:
-            headers:
-            params:
-
-        Returns:
-            None
-        """
-        pass
 
     # endregion
 
@@ -201,7 +214,7 @@ class Service(metaclass=ABCMeta):
 
         # TODO: implement rate limiter
 
-        with requests.Session() as session:
+        with self.session as session:
             try:
                 assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
             except ValueError:
@@ -214,16 +227,19 @@ class Service(metaclass=ABCMeta):
                 request = requests.Request(request_type.upper(), self.root + "/{}/".format(api_version) + endpoint,
                                            params=final_params, data=data, headers=headers)
                 prepped = request.prepare()
-                response = session.send(prepped)
-                try:
-                    response.raise_for_status()
-                except requests.HTTPError as e:
-                    logger.exception(
-                        "Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name,
-                                                                                          response.text))
-                finally:
-                    logger.debug('Queried {} at {}'.format(self.name, response.url))
-                    return response
+                if self.debug:
+                    return prepped
+                else:
+                    response = session.send(prepped)
+                    try:
+                        response.raise_for_status()
+                    except requests.HTTPError as e:
+                        logger.exception(
+                            "Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name,
+                                                                                              response.text))
+                    finally:
+                        logger.debug('Queried {} at {}'.format(self.name, response.url))
+                        return response
 
     def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False):
         return self.request('get', endpoint, params=params, api_version=api_version, data=data, headers=headers,
