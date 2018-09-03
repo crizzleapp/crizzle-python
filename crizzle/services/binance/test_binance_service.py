@@ -1,14 +1,15 @@
 import requests
 from nose.tools import assert_raises
+import crizzle
 from crizzle.services.binance import BinanceService
 
 default_timestamp = 1499827319559
 unsigned_svc = BinanceService(debug=True, name='binanceunsigned', default_timestamp=default_timestamp)
 svc = BinanceService(debug=True, name='binancetest', default_timestamp=default_timestamp)
-svc.load_key({
+crizzle.load_key({
     "key": "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
     "secret": "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j"
-})
+}, name='binancetest')
 
 
 def test_key_loaded():
@@ -311,14 +312,14 @@ def test_account_info():
 
 
 def test_trade_list_1():
-    response = svc.trade_list('ETHBTC')
+    response = svc.my_trades('ETHBTC')
     assert response.method == 'GET'
     assert response.url == '{}/v3/myTrades?timestamp=1499827319559&recvWindow=5000&symbol=ETHBTC&signature=' \
                            'be21311f12ce93e39943125c586227c53489db5c708c9c26bc951f4da9933a7b'.format(svc.root)
 
 
 def test_trade_list_2():
-    response = svc.trade_list('ETHBTC', limit=100)
+    response = svc.my_trades('ETHBTC', limit=100)
     assert response.method == 'GET'
     assert response.url == '{}/v3/myTrades?timestamp=1499827319559&recvWindow=5000' \
                            '&symbol=ETHBTC&limit=100&signature=' \
@@ -326,7 +327,7 @@ def test_trade_list_2():
 
 
 def test_trade_list_3():
-    response = svc.trade_list('ETHBTC', from_id=12345678)
+    response = svc.my_trades('ETHBTC', from_id=12345678)
     assert response.method == 'GET'
     assert response.url == '{}/v3/myTrades?timestamp=1499827319559&recvWindow=5000' \
                            '&symbol=ETHBTC&fromId=12345678&signature=' \

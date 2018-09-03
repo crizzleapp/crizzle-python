@@ -1,108 +1,107 @@
-def initialize(graph, source):
-    d = {}  # Stands for destination
-    p = {}  # Stands for predecessor
-    for node in graph:
-        d[node] = float('Inf')  # We start assuming that the rest of nodes are unreachable
-        p[node] = None
-    d[source] = 0  # For the source we know how to reach
-    return d, p
+import logging
+import numpy as np
 
-
-def relax(node, neighbour, graph, d, p):
-    # If the distance between the node and the neighbour is lower than the one we have now
-    if d[neighbour] > d[node] + graph[node][neighbour]:
-        # Record this lower distance
-        d[neighbour] = d[node] + graph[node][neighbour]
-        p[neighbour] = node
-
-
-def bellman_ford_iteration(graph, d, p):
-    for u in graph:
-        for v in graph[u]:  # For each neighbour of u
-            relax(u, v, graph, d, p)  # relax the edge between u and v
-
-
-def bellman_ford(graph, source):
-    d, p = initialize(graph, source)
-    for i in range(len(graph) - 1):  # Run iterations until convergence
-        bellman_ford_iteration(graph, d, p)
-
-    # Check for negative-weight cycles
-    for u in graph:
-        for v in graph[u]:
-            try:
-                assert d[v] <= d[u] + graph[u][v]
-            except AssertionError:
-                print("Detected a negative weight cycle:", u, v)
-    return d, p
+logger = logging.getLogger(__name__)
 
 
 class DiGraph:
-    def __init__(self, adjacency=None, edges=None, name=None):
-        self._adjacency = {}
-        self.name = None
-        if isinstance(adjacency, dict):
-            assert edges is None
-            self.repair_adjacency(adjacency)
-            self._adjacency = adjacency
-        elif isinstance(edges, list):
-            assert adjacency is None
-            adjacency = self.edges_to_adjacency(edges)
-            self.repair_adjacency(adjacency)
-            self._adjacency = adjacency
-        if name is not None:
-            self.name = name
+    def __init__(self, adjacency_matrix=None, edges=None, name=None, is_fresh=True, log=False):
+        assert bool(adjacency_matrix) ^ bool(edges)  # Check XOR: one or the other should be given
+        if edges:
+            adjacency_matrix = self.edges_to_adjacency_matrix(edges)
+        self._adjacency_matrix = adjacency_matrix
 
     @staticmethod
-    def repair_adjacency(adjacency):
-        missing_origins = []
-        for adj in adjacency.values():
-            for dest in adj:
-                if dest not in adjacency:
-                    missing_origins.append(dest)
-                    # raise ValueError("Adjacency list is malformed.")
+    def repair_adjacency_list(adjacency_list):
+        missing_origins = set()
+        for destinations in adjacency_list.values():
+            for destination in destinations:
+                if destination not in adjacency_list:
+                    missing_origins.add(destination)
+        print(missing_origins)
         for origin in missing_origins:
-            adjacency.update({origin: {}})
+            adjacency_list.update({origin: {}})
 
     @staticmethod
-    def edges_to_adjacency(edges):
-        adjacency = {}
+    def edges_to_adjacency_matrix(edges):
+        # region construct name and index maps
+        edges = sorted(edges, key=lambda edge: edge[0] + edge[1])
+        seen_nodes = set()
+        names = []
+        for origin, destination, weight in edges:
+            if origin not in seen_nodes:
+                seen_nodes.add(origin)
+                names.append(origin)
+            if destination not in seen_nodes:
+                seen_nodes.add(destination)
+                names.append(destination)
+        argsort = sorted(range(len(names)), key=names.__getitem__)
+        names = [names[i] for i in argsort]
+        indices = {names[i]: i for i in argsort}
+        # endregion
+
+        adjacency_matrix = np.full((len(names), len(names)), np.nan)
+        for origin, destination, weight in edges:
+            index = (indices[origin], indices[destination])
+            adjacency_matrix[index] = weight
+        return adjacency_matrix
+
+    @staticmethod
+    def edges_to_adjacency_list(edges):
+        adjacency_list = {}
         for edge in edges:
-            source, destination, weight = edge
-            if source not in adjacency:
-                adjacency[source] = {}
-            if destination not in adjacency[source]:
-                adjacency[source][destination] = weight
-        return adjacency
+            origin, destination, weight = edge
+            if origin not in adjacency_list:
+                adjacency_list[origin] = {}
+            if destination not in adjacency_list[origin]:
+                adjacency_list[origin][destination] = weight
+        return adjacency_list
 
     @property
     def inverse(self):
         inverse_edges = []
-        for origin in self._adjacency:
-            for destination in self._adjacency[origin]:
-                inverse = [destination, origin, 1.0 / self._adjacency[origin][destination]]
+        for origin in self._adjacency_list:
+            for destination in self._adjacency_list[origin]:
+                inverse = [destination, origin, 1.0 / self._adjacency_list[origin][destination]]
                 inverse_edges.append(inverse)
-        return DiGraph(edges=inverse_edges)
+        return DiGraph(edges=inverse_edges, is_fresh=False)
+
+    @property
+    def log(self):
+        log_edges = []
+        for origin in self._adjacency_list:
+            for destination in self._adjacency_list[origin]:
+                inverse = [destination, origin, np.log(self._adjacency_list[origin][destination])]
+                log_edges.append(inverse)
+        return DiGraph(edges=log_edges, is_fresh=False)
 
     @property
     def nodes(self):
-        return list(self._adjacency.keys())
-
-    @property
-    def adjacency(self):
-        return self._adjacency
+        return sorted(list(self._adjacency_list.keys()))
 
     @property
     def edges(self):
         edges = []
-        for node, neighbors in self._adjacency.items():
+        for node, neighbors in self._adjacency_list.items():
             for nb in neighbors:
                 edges.append((node, nb, neighbors[nb]))
-        return edges
+        return sorted(edges, key=lambda edge: edge[0] + edge[1])
+
+    @property
+    def adjacency_list(self):
+        return self._adjacency_list
+
+    @property
+    def adjacency_matrix(self):
+        if self._adjacency_matrix is None:
+            num_elems = len(self._adjacency_list)
+            self._adjacency_matrix = np.full((num_elems, num_elems), np.inf)
+
+        return self._adjacency_matrix
 
     def add_node(self, name):
-        if name not in self._adjacency:
-            self._adjacency[name] = {}
+        if name not in self._adjacency_list:
+            self._adjacency_list[name] = {}
 
     def add_nodes(self, *names):
         for name in names:
@@ -110,34 +109,38 @@ class DiGraph:
 
     def add_edge(self, origin, destination, weight):
         self.add_nodes(origin, destination)
-        if destination not in self._adjacency[origin]:
-            self._adjacency[origin][destination] = weight
+        if destination not in self._adjacency_list[origin]:
+            self._adjacency_list[origin][destination] = weight
 
     def add_edges(self, edges):
         for edge in edges:
             self.add_edge(*edge)
 
-    def edge_weight(self, origin, destination):
-        return self._adjacency[origin][destination]
+    def get_edge_weight(self, origin, destination):
+        return self._adjacency_list[origin][destination]
 
-    def shortest_path(self, source, destination):
-        try:
-            path = [destination]
-            d, p = bellman_ford(self._adjacency, source)
-            predecessor = p[destination]
-            while predecessor != source:
-                path.append(predecessor)
-                predecessor = p[predecessor]
-            return list(reversed(path))
-        except AssertionError as e:
-            print(e)
+    def shortest_path(self, origin, destination):
+        # TODO: implement Bellman-Ford shortest path with negative cycle detection
+        pass
+
+    def get_distance(self, origin, destination):
+        path = self.shortest_path(origin, destination)
+        distance = 1
+        for i in range(len(path) - 1):
+            src, dst = path[i], path[i + 1]
+            distance += self.get_edge_weight(src, dst)
+        return distance
 
     def add_inverse(self):
         inverse = self.inverse
         self.add_edges(inverse.edges)
 
+    def add_log(self):
+        log = self.log
+        self.add_edges(log.edges)
+
     def __str__(self):
-        return str(self._adjacency)
+        return str(self._adjacency_list)
 
 
 if __name__ == '__main__':
@@ -255,5 +258,6 @@ if __name__ == '__main__':
         l.add_inverse()
         print(l)
         print(l.shortest_path('CHAT', 'SYS'))
+
 
     test()

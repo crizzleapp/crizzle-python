@@ -4,8 +4,7 @@ import json
 import logging
 import requests
 from abc import ABCMeta, abstractmethod
-
-from crizzle.patterns import assert_in
+from crizzle.utils import assert_in
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +111,7 @@ class Service(metaclass=ABCMeta):
         Get the final parameters to send with the request.
 
         Args:
-            **kwargs: Keywork arguments that may be used to determine the default parameters
+            **kwargs: Keyword arguments that may be used to determine the default parameters
 
         Returns:
             dict: Dictionary containing the final parameters to be sent with the request
@@ -187,7 +186,7 @@ class Service(metaclass=ABCMeta):
 
     # region Request methods
     def request(self, request_type: str, endpoint: str, params=None, api_version=None, data=None, headers=None,
-                sign=False):
+                sign=False, add_api_key=True):
         """
         Send a synchronous request to an API endpoint.
 
@@ -199,6 +198,7 @@ class Service(metaclass=ABCMeta):
             data (dict): Dictionary-like object containing the data to send with request
             headers (dict): Additional headers to send with the request
             sign (bool): whether or not to sign the request using the secret key
+            add_api_key:
 
         Returns:
 
@@ -212,8 +212,6 @@ class Service(metaclass=ABCMeta):
             data = {}
         final_params = self.__class__.get_params(**arguments)
 
-        # TODO: implement rate limiter
-
         with self.session as session:
             try:
                 assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
@@ -223,7 +221,8 @@ class Service(metaclass=ABCMeta):
             else:
                 if sign:
                     self.sign_request_data(params=final_params, data=data, headers=headers)
-                self.add_api_key(params=final_params, data=data, headers=headers)
+                if add_api_key:
+                    self.add_api_key(params=final_params, data=data, headers=headers)
                 request = requests.Request(request_type.upper(), self.root + "/{}/".format(api_version) + endpoint,
                                            params=final_params, data=data, headers=headers)
                 prepped = request.prepare()
@@ -241,20 +240,21 @@ class Service(metaclass=ABCMeta):
                         logger.debug('Queried {} at {}'.format(self.name, response.url))
                         return response
 
-    def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False):
+    def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False, add_api_key=True):
         return self.request('get', endpoint, params=params, api_version=api_version, data=data, headers=headers,
-                            sign=sign)
+                            sign=sign, add_api_key=add_api_key)
 
-    def post(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True):
+    def post(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True, add_api_key=True):
         return self.request('post', endpoint, params=params, api_version=api_version, data=data, headers=headers,
-                            sign=sign)
+                            sign=sign, add_api_key=add_api_key)
 
-    def put(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True):
+    def put(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True, add_api_key=True):
         return self.request('put', endpoint, params=params, api_version=api_version, data=data, headers=headers,
-                            sign=sign)
+                            sign=sign, add_api_key=add_api_key)
 
-    def delete(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True):
+    def delete(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=True,
+               add_api_key=True):
         return self.request('delete', endpoint, params=params, api_version=api_version, data=data, headers=headers,
-                            sign=sign)
+                            sign=sign, add_api_key=add_api_key)
 
     # endregion

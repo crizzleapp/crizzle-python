@@ -2,38 +2,45 @@ import os
 import time
 import json
 import logging
-
-from crizzle import patterns
-from crizzle.envs.base import Feed as BaseFeed
-from crizzle.services.binance import INTERVALS
+from crizzle import utils, envs
+from crizzle.services.binance import constants
 
 logger = logging.getLogger(__name__)
 
 
-class Feed(BaseFeed):
+class BinanceFeed(envs.base.Feed):
     def __init__(self, symbols: list = None, intervals: list = None):
-        super(Feed, self).__init__('binance')
-        self.symbols = self.service.trading_symbols() if symbols is None else symbols
-        self.intervals = INTERVALS if intervals is None else intervals
-        self.historical_filepath = self.get_path('candlestick')
-        self.initialize_file(self.historical_filepath)
+        super(BinanceFeed, self).__init__('binance')
+        self.symbols = symbols or self.service.trading_symbols()
+        self.intervals = intervals or constants.INTERVALS
+        self.initialize_cache()
 
-    def initialize_file(self, filepath: str):
-        super(Feed, self).initialize_file(filepath)
-        with open(filepath, 'r+') as file:
-            try:
-                json.load(file)
-            except json.decoder.JSONDecodeError:
-                file.write('{}')
+    def initialize_cache(self):
+        super(BinanceFeed, self).initialize_cache()
 
     def get_path(self, data_type: str) -> str:
         """
-        Get the name of the file to store the historical data in
+        Get the path to the file where data is stored
 
         Returns:
             str: Name of file
         """
-        return os.path.join(self.data_directory, data_type, self.name + '.json')
+        return os.path.join(self.data_directory, data_type)
+
+    def download_candlesticks(self):
+        pass
+
+    def download_historical_trades(self):
+        pass
+
+    def download_aggregated_trades(self):
+        pass
+
+    def download_all_orders(self):
+        pass
+
+    def download_my_trades(self):
+        pass
 
     def most_recent(self) -> dict:
         """
@@ -44,7 +51,7 @@ class Feed(BaseFeed):
             timestamp of the most recent entry available, or None if there are no records for that symbol.
         """
         output = {}
-        with open(self.historical_filepath) as file:
+        with open(self.get_path('candlestick')) as file:
             data = json.load(file)
             for interval in self.intervals:
                 if interval not in output:
@@ -69,21 +76,17 @@ class Feed(BaseFeed):
         prices = self.current_price()
         edges = list(map(
             lambda x: [x['baseAsset'], x['quoteAsset'], prices[x['baseAsset'] + x['quoteAsset']]],
-            self.service.info(key='symbols')
+            [sym for sym in self.service.info().json()['symbols'] if sym['status'] == 'TRADING']
         ))
-        return patterns.DiGraph(edges=edges)
+        return utils.DiGraph(edges=edges, log=True)
 
     def get_historical_candlesticks(self, interval, symbol, start=None, end=None):
         return self.service.candlesticks(symbol, interval, start=start, end=end).to_json(orient='records')
 
     def current_price(self, symbol=None):
-        data = self.service.ticker_price(symbol=symbol)
-        if symbol is None:
-            return dict(map(lambda item: (item['symbol'], float(item['price'])), data))
-        else:
-            return data['price']
+        return self.service.ticker_price(symbol=symbol)
 
-    def update_local_historical_data(self):
+    def update_cache(self):
         """
         Brings locally stored historical data for all chosen symbols up to date.
         """
@@ -108,6 +111,3 @@ class Feed(BaseFeed):
                         logger.debug("Interval {}; Symbol {}; Close Time {}".format(interval, symbol, close_time))
         with open(path, 'w') as file:
             json.dump(data, file, indent=2)
-
-    def next(self):
-        pass

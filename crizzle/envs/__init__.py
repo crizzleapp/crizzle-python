@@ -1,16 +1,15 @@
 import os
+from crizzle.envs import base, binance
 
-from crizzle.envs.data_grabber import DataGrabber
-from crizzle.envs.data_handler import DataHandler
-from crizzle.envs import binance
-from crizzle.envs import backtest
+ENVIRONMENT_MAP = {'binance': binance}
+ENVIRONMENTS = list(ENVIRONMENT_MAP.keys())
 
 
 def get_data_dir():
     return os.environ['CrizzleData']
 
 
-def make(name: str, *args, **kwargs):
+def get(name: str, *args, **kwargs):
     """
     Helper method for creating a new instance of a feed.
     Does not act as a singleton filter.
@@ -21,9 +20,7 @@ def make(name: str, *args, **kwargs):
     Returns:
 
     """
-    feed_map = {'binance': binance,
-                'backtest': backtest}
-    if name in feed_map:
-        return feed_map[name].Feed(*args, **kwargs)
+    if name in ENVIRONMENT_MAP:
+        return ENVIRONMENT_MAP[name].BinanceFeed(*args, **kwargs)
     else:
         raise NameError("Could not find environment with name '{}'.".format(name))

@@ -1,11 +1,18 @@
 from crizzle.services import base
 from crizzle.services import binance
-from crizzle.services import poloniex
-from crizzle.patterns import memoize
+from crizzle.utils import memoize
+
+EXCHANGE_MAP = {'binance': binance}
+EXCHANGES = list(EXCHANGE_MAP.keys())
 
 
 @memoize
-def make(exchange_name, *args, **kwargs):
-    exchanges = {'poloniex': poloniex,
-                 'binance': binance}
-    return exchanges[exchange_name].BinanceService(*args, **kwargs)
+def get(exchange_name: str, *args, **kwargs):
+    exchange_name = exchange_name.lower()
+    if exchange_name not in EXCHANGE_MAP:
+        raise ValueError("Invalid Exchange Name '{}'".format(exchange_name))
+    return EXCHANGE_MAP[exchange_name].BinanceService(*args, **kwargs)
+
+
+class constants:
+    binance = binance.constants

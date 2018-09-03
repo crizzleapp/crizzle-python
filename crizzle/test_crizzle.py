@@ -1,6 +1,6 @@
 import os
-
-from . import load_config, load_key
+import shutil
+from . import set_data_directory, load_key
 
 
 def test_load_key():
@@ -15,15 +15,10 @@ def test_load_key():
 
 
 def test_load_config():
-    path = 'tmp.json'
-    data = '{"data": "/datapath", "keys": "/keyspath", "log": "/logpath"}'
-    with open(path, 'w') as tmp:
-        tmp.write(data)
-    try:
-        load_config(path)
-    except FileNotFoundError:
-        pass
+    path = 'tmp'
+    os.makedirs(path, exist_ok=True)
+    set_data_directory(path)
     assert os.environ['CrizzleData'] == '/datapath'
     assert os.environ['CrizzleKeys'] == '/keyspath'
     assert os.environ['CrizzleLog'] == '/logpath'
-    os.remove(path)
+    shutil.rmtree(path)

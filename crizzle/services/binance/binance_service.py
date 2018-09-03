@@ -5,23 +5,24 @@ import json
 import urllib
 import logging
 import hashlib
+from ratelimit import RateLimitException
+from backoff import on_exception, expo
 from crizzle.services.base import Service as BaseService
-from crizzle import patterns
+from crizzle.services.binance.rate_limiter import RateLimiter
+from crizzle import utils
 
 logger = logging.getLogger(__name__)
 
 
 class BinanceService(BaseService):
-    def __init__(self, key=None, debug=False, mode='json', recv_window=None, name=None, default_timestamp=None):
+    def __init__(self, key=None, debug=False, recv_window=5000, name=None, default_timestamp=None):
         super(BinanceService, self).__init__('binance' if name is None else name,
                                              "https://api.binance.com/api",
                                              debug=debug,
                                              default_timestamp=default_timestamp,
                                              key=key)
-        self.mode = mode
-        self.timestamp_unit = 'ms'
         self.default_api_version = 'v1'
-        self.recv_window = 5000 if recv_window is None else recv_window
+        self.recv_window = recv_window
 
     # region Helper methods
     @property
@@ -92,34 +93,37 @@ class BinanceService(BaseService):
 
     # endregion
 
+    @on_exception(expo, RateLimitException, factor=5)
+    def request(self, request_type: str, endpoint: str, params=None, api_version=None, data=None, headers=None,
+                sign=False, add_api_key=True):
+        response = super(BinanceService, self).request(request_type, endpoint, params=params, api_version=api_version,
+                                                       data=data, headers=headers, sign=sign, add_api_key=add_api_key)
+        if not self.debug:
+            if response.status_code in {429, 418}:
+                logger.warning("Binance rate limit reached.")
+                raise RateLimitException('Binance rate limit reached.', 60)
+
+        return response
+
     # region General Endpoints
     def test_connection(self):
-        return self.get('ping')
+        return self.get('ping', add_api_key=False)
 
     def server_time(self):
-        return self.get("time")
+        return self.get("time", add_api_key=False)
 
-    def info(self, symbol=None, key=None):
+    def info(self):
         """
-        Get information about a symbol or the exchange.
-        if key is specified:
-            if symbol is specified, returns specified property of that symbol.
-            else, returns specified property of the exchange.
-
-        Args:
-            symbol: trading pair
-            key: property of trading pair or exchange
-
-        Returns:
-
+        Get information about the exchange.
         """
-        return self.get("exchangeInfo")
+        return self.get("exchangeInfo", add_api_key=False)
 
     def trading_assets(self):
-        symbols = self.info(key='symbols')
+        info = self.info()
         if self.debug:
-            return symbols
+            return info
         else:
+            symbols = info.json()['symbols']
             assets = set()
             for symbol in symbols:
                 base = symbol['baseAsset']
@@ -133,13 +137,14 @@ class BinanceService(BaseService):
         Get a list of all symbols trading on the exchange.
 
         Returns:
-            Symbols trading on the exchange.
+            list: Symbols trading on the exchange.
         """
         symbols = []
-        symbol_info = self.info(key='symbols')
+        info = self.info()
         if self.debug:
-            return symbol_info
+            return info
         else:
+            symbol_info = info.json()['symbols']
             for symbol in symbol_info:
                 symbols.append(symbol['symbol'])
             return symbols
@@ -210,11 +215,16 @@ class BinanceService(BaseService):
         response = self.get("ticker/24hr", params=params)
         return response
 
-    def ticker_price(self, symbol: str = None):
-        params = {}
-        if symbol is not None:
-            params['symbol'] = symbol
-        response = self.get("ticker/price", params=params, api_version='v3')
+    def ticker_price(self, symbol=None):
+        response = self.get("ticker/price", params=None, api_version='v3')
+        if not self.debug:
+            response = {item['symbol']: float(item['price']) for item in response.json()}
+            if isinstance(symbol, str):
+                response = [v for k, v in response.items() if k == symbol][0]
+            elif isinstance(symbol, (list, tuple)):
+                response = {k: v for k, v in response.items() if k in symbol}
+            if not response:
+                raise ValueError("Invalid symbol(s) of type {}: {}".format(type(symbol), symbol))
         return response
 
     def ticker_book(self, symbol: str = None):
@@ -229,42 +239,42 @@ class BinanceService(BaseService):
     # region Account Endpoints
     def order(self, symbol, side, order_type, quantity, price: float = None, stop_price=None, time_in_force: str = None,
               iceberg_qty: float = None, new_client_order_id: int = None, test=False):
-        params = {}
+        params = {'newOrderRespType': 'FULL'}
         side = side.upper()
         order_type = order_type.upper()
         if time_in_force is not None:
             time_in_force = time_in_force.upper()
         if price is not None:
-            price = patterns.conversion.float_to_str(price)
+            price = utils.conversion.float_to_str(price)
 
         if order_type == 'LIMIT':
-            patterns.assert_none(stop_price, 'stop_price')
-            patterns.assert_not_none(time_in_force, 'time_in_force')
-            patterns.assert_not_none(price, 'price')
+            utils.assert_none(stop_price, 'stop_price')
+            utils.assert_not_none(time_in_force, 'time_in_force')
+            utils.assert_not_none(price, 'price')
             params.update({'timeInForce': time_in_force, 'price': price})
         elif order_type == 'MARKET':
-            patterns.assert_none(price, 'price')
-            patterns.assert_not_none(quantity, 'quantity')
+            utils.assert_none(price, 'price')
+            utils.assert_not_none(quantity, 'quantity')
         elif order_type in ('STOP_LOSS', 'TAKE_PROFIT'):
-            patterns.assert_not_none(stop_price, 'stop_price')
+            utils.assert_not_none(stop_price, 'stop_price')
             params.update({'stopPrice': stop_price})
         elif order_type in ('STOP_LOSS_LIMIT', 'TAKE_PROFIT_LIMIT'):
-            patterns.assert_not_none(time_in_force, 'time_in_force')
-            patterns.assert_not_none(stop_price, 'stop_price')
-            patterns.assert_not_none(price, 'price')
+            utils.assert_not_none(time_in_force, 'time_in_force')
+            utils.assert_not_none(stop_price, 'stop_price')
+            utils.assert_not_none(price, 'price')
             params.update({'stopPrice': stop_price, 'price': price, 'timeInForce': time_in_force})
         elif order_type == 'LIMIT_MAKER':
-            patterns.assert_not_none(price, 'price')
+            utils.assert_not_none(price, 'price')
             params.update({'price': price})
         else:
             raise ValueError('Invalid order type')
         if iceberg_qty is not None:
-            patterns.assert_equal(time_in_force, 'time_in_force', 'GTC')
+            utils.assert_equal(time_in_force, 'time_in_force', 'GTC')
             params['icebergQty'] = iceberg_qty
         if new_client_order_id is not None:
             params['newClientOrderId'] = new_client_order_id
-        patterns.assert_in(side, 'side', ('BUY', 'SELL'))
-        patterns.assert_in(time_in_force, 'time_in_force', (None, 'GTC', 'IOC', 'FOK'))
+        utils.assert_in(side, 'side', ('BUY', 'SELL'))
+        utils.assert_in(time_in_force, 'time_in_force', (None, 'GTC', 'IOC', 'FOK'))
         params.update({'symbol': symbol, 'type': order_type, 'quantity': quantity, 'side': side})
         response = self.post('order{}'.format('/test' if test else ''), api_version='v3', params=params, sign=True)
         return response
@@ -320,7 +330,7 @@ class BinanceService(BaseService):
         response = self.get('account', api_version='v3', params=None, sign=True)
         return response
 
-    def trade_list(self, symbol, limit: int = None, from_id: int = None):
+    def my_trades(self, symbol, limit: int = None, from_id: int = None):
         params = {'symbol': symbol}
         if limit is not None:
             params['limit'] = limit

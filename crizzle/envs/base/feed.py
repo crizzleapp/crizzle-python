@@ -7,42 +7,27 @@ from crizzle import envs
 logger = logging.getLogger(__name__)
 
 
-class Feed(envs.DataGrabber):
+class Feed:
     def __init__(self, name: str):
         super(Feed, self).__init__()
         self.name = name
-        self.data_directory = envs.get_data_dir()
-        self.service = services.make(self.name)
-        # TODO: replace multiple files with a single file.
+        self.data_directory = os.path.join(envs.get_data_dir(), self.name)
+        self.service = services.get(self.name)
         logger.debug("Initialised new feed '{}'.".format(self.name))
 
-    def initialize_file(self, filepath: str):
+    def initialize_cache(self):
         """
         Creates historical data file in the local data directory if it doesn't already exist.
 
-        Args:
-            filepath (str): Full path to file
-
-        Returns:
-            None
         """
-        if not os.path.isdir(self.data_directory):
-            os.makedirs(self.data_directory)
-        full_path = os.path.join(self.data_directory, filepath)
-        if not os.path.exists(full_path):
-            with open(full_path, 'w') as newfile:
-                newfile.write('')
+        os.makedirs(self.data_directory, exist_ok=True)
 
     @abstractmethod
-    def update_local_historical_data(self):
+    def update_cache(self):
         """
         Updates locally stored historical data.
 
         Returns:
 
         """
-        pass
-
-    @abstractmethod
-    def next(self):
         pass
