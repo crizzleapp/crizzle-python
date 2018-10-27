@@ -3,8 +3,10 @@ import time
 import json
 import logging
 import requests
+from collections import OrderedDict
 from abc import ABCMeta, abstractmethod
 from crizzle.utils import assert_in
+from sys import stderr
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +125,11 @@ class Service(metaclass=ABCMeta):
                 final_params.update(params)
         return final_params
 
+    @staticmethod
+    def sort_dict(dictionary: dict):
+        sorted_keys = sorted(dictionary.keys())
+        return OrderedDict([(key, dictionary[key]) for key in sorted_keys])
+
     @abstractmethod
     def sign_request_data(self, params=None, data=None, headers=None):
         """
@@ -211,6 +218,9 @@ class Service(metaclass=ABCMeta):
         if data is None:
             data = {}
         final_params = self.__class__.get_params(**arguments)
+        headers = self.sort_dict(headers)
+        final_params = self.sort_dict(final_params)
+        data = self.sort_dict(data)
 
         with self.session as session:
             try:

@@ -1,3 +1,8 @@
+"""
+API call-rate limiter for the Binance service.
+Currently unused.
+"""
+
 import time
 import json
 

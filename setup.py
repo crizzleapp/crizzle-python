@@ -11,7 +11,7 @@ setup(
         'bokeh',
         'requests',
         'backoff',
-        'nose', 'ratelimit'
+        'nose', 'ratelimit', 'scipy', 'opencv-python'
     ],
     author="Krishna Penukonda"
 )
