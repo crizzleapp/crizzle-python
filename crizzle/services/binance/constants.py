@@ -1,5 +1,3 @@
-import dateparser
-
 INTERVAL_1MINUTE = '1m'
 INTERVAL_3MINUTE = '3m'
 INTERVAL_5MINUTE = '5m'
