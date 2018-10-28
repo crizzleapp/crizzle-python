@@ -2,17 +2,19 @@ import os
 import time
 import json
 import logging
-from crizzle import utils, envs
-from crizzle.services.binance import constants
+from crizzle import utils
+from crizzle.feeds.base import Feed
 
 logger = logging.getLogger(__name__)
 
 
-class BinanceFeed(envs.base.Feed):
+class BinanceFeed(Feed):
+    name = 'binance'
+
     def __init__(self, symbols: list = None, intervals: list = None):
-        super(BinanceFeed, self).__init__('binance')
+        super(BinanceFeed, self).__init__()
         self.symbols = symbols or self.service.trading_symbols()
-        self.intervals = intervals or constants.INTERVALS
+        self.intervals = intervals or self.constants.INTERVALS
         self.initialize_cache()
 
     def initialize_cache(self):

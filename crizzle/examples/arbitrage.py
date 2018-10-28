@@ -7,7 +7,7 @@ logging.basicConfig(format='%(asctime)s -- %(levelname)s: %(message)s', handlers
                     level=logging.DEBUG)
 
 crizzle.set_data_directory('G:/Documents/CrizzleData')
-env = crizzle.get_env('binance')
+env = crizzle.get_feed('binance')
 LOWER_LIMIT = 21
 UPPER_LIMIT = 55
 

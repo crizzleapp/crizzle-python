@@ -1,5 +1,5 @@
 import os
-from crizzle.envs import base, binance
+from crizzle.feeds import binance, base
 
 ENVIRONMENT_MAP = {'binance': binance}
 ENVIRONMENTS = list(ENVIRONMENT_MAP.keys())
@@ -21,6 +21,6 @@ def get(name: str, *args, **kwargs):
 
     """
     if name in ENVIRONMENT_MAP:
-        return ENVIRONMENT_MAP[name].BinanceFeed(*args, **kwargs)
+        return ENVIRONMENT_MAP[name].Feed(*args, **kwargs)
     else:
         raise NameError("Could not find environment with name '{}'.".format(name))

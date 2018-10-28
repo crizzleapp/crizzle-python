@@ -4,9 +4,8 @@ import json
 import logging
 import requests
 from collections import OrderedDict
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from crizzle.utils import assert_in
-from sys import stderr
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +33,12 @@ class Service(metaclass=ABCMeta):
 
     # region Helper methods
     @property
-    @abstractmethod
     def key(self):
-        pass
+        return None
 
     @property
-    @abstractmethod
     def key_loaded(self):
-        pass
+        return self.key is not None
 
     def load_key(self, key) -> None:
         """
@@ -95,7 +92,6 @@ class Service(metaclass=ABCMeta):
         """
         return int(time.time() * 1000)
 
-    @abstractmethod
     def get_default_params(self, **kwargs) -> dict:
         """
         Creates a dictionary of paramters to be sent by default along with every request
@@ -130,7 +126,6 @@ class Service(metaclass=ABCMeta):
         sorted_keys = sorted(dictionary.keys())
         return OrderedDict([(key, dictionary[key]) for key in sorted_keys])
 
-    @abstractmethod
     def sign_request_data(self, params=None, data=None, headers=None):
         """
         Sign the request params/data/headers with the secret key in accordance with the API spec.
@@ -143,9 +138,8 @@ class Service(metaclass=ABCMeta):
         Returns:
 
         """
-        pass
+        return {'params': params, 'data': data, 'headers': headers}
 
-    @abstractmethod
     def add_api_key(self, params=None, data=None, headers=None):
         """
         Adds API key to the request params/data/headers in accordance with the API spec.
@@ -158,7 +152,7 @@ class Service(metaclass=ABCMeta):
         Returns:
             None
         """
-        pass
+        return {'params': params, 'data': data, 'headers': headers}
 
     def json_number_hook(self, inp):
         if isinstance(inp, list):

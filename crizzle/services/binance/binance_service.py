@@ -7,14 +7,34 @@ import logging
 import hashlib
 from ratelimit import RateLimitException
 from backoff import on_exception, expo
-from crizzle.services.base import Service as BaseService
+from crizzle.services.base import Service
 from crizzle.services.binance.rate_limiter import RateLimiter
 from crizzle import utils
 
 logger = logging.getLogger(__name__)
 
 
-class BinanceService(BaseService):
+class Constants:
+    INTERVAL_1MINUTE = '1m'
+    INTERVAL_3MINUTE = '3m'
+    INTERVAL_5MINUTE = '5m'
+    INTERVAL_15MINUTE = '15m'
+    INTERVAL_30MINUTE = '30m'
+    INTERVAL_1HOUR = '1h'
+    INTERVAL_2HOUR = '2h'
+    INTERVAL_4HOUR = '4h'
+    INTERVAL_6HOUR = '6h'
+    INTERVAL_8HOUR = '8h'
+    INTERVAL_12HOUR = '12h'
+    INTERVAL_1DAY = '1d'
+    INTERVAL_1WEEK = '1w'
+    INTERVAL_1MONTH = '1M'
+    INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '1w', '1M']
+
+
+class BinanceService(Service):
+    constants = Constants
+
     def __init__(self, key=None, debug=False, recv_window=5000, name=None, default_timestamp=None):
         super(BinanceService, self).__init__('binance' if name is None else name,
                                              "https://api.binance.com/api",
@@ -72,6 +92,7 @@ class BinanceService(BaseService):
             raise RuntimeError("API key has not been loaded. Unable to add API key to request headers.")
         else:
             headers['X-MBX-APIKEY'] = self.api_key
+        return {'params': params, 'data': data, 'headers': headers}
 
     def sign_request_data(self, params=None, data=None, headers=None):
         """
@@ -90,6 +111,7 @@ class BinanceService(BaseService):
         encoded = bytes(urllib.parse.urlencode(params) + urllib.parse.urlencode(data), 'utf-8')
         signature = hmac.new(bytes(self.secret_key, 'utf-8'), encoded, digestmod=hashlib.sha256)
         params['signature'] = signature.hexdigest()
+        return {'params': params, 'data': data, 'headers': headers}
 
     # endregion
 

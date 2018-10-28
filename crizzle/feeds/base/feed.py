@@ -1,19 +1,25 @@
 import os
 import logging
 from abc import abstractmethod
-from crizzle import services
-from crizzle import envs
+from crizzle import services, feeds
 
 logger = logging.getLogger(__name__)
 
 
 class Feed:
-    def __init__(self, name: str):
-        super(Feed, self).__init__()
-        self.name = name
-        self.data_directory = os.path.join(envs.get_data_dir(), self.name)
-        self.service = services.get(self.name)
+    name = 'base'
+
+    def __init__(self):
         logger.debug("Initialised new feed '{}'.".format(self.name))
+        self.constants = self.service.constants
+
+    @property
+    def data_directory(self):
+        return os.path.join(feeds.get_data_dir(), self.name)
+
+    @property
+    def service(self):
+        return services.get(self.name)
 
     def initialize_cache(self):
         """

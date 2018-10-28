@@ -2,13 +2,12 @@ import os
 import json
 import logging
 from crizzle import services
-from crizzle import envs
+from crizzle import feeds
 from crizzle import utils
 
 logger = logging.getLogger(__name__)
-constants = services.constants
 get_service = services.get
-get_env = envs.get
+get_feed = feeds.get
 
 
 def load_key(key_or_path, name=None):
