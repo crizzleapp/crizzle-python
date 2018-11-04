@@ -74,6 +74,7 @@ class BinanceFeed(Feed):
         return output
 
     def current_price_graph(self, assets=None):
+        assets = set(assets)
         prices = self.current_price()
         trading_symbols = [sym for sym in self.service.info().json()['symbols'] if sym['status'] == 'TRADING']
         if assets:
@@ -84,9 +85,13 @@ class BinanceFeed(Feed):
             for sym in to_remove:
                 trading_symbols.remove(sym)
         edges = list(map(
-            lambda x: [x['baseAsset'], x['quoteAsset'], prices[x['baseAsset'] + x['quoteAsset']]], trading_symbols
+            lambda x: (x['baseAsset'], x['quoteAsset'], prices[x['baseAsset'] + x['quoteAsset']]), trading_symbols
         ))
-        return utils.DiGraph(edges=edges, use_negative_log=True)
+        inverse_edges = list(map(
+            lambda x: (x['quoteAsset'], x['baseAsset'], 1 / prices[x['baseAsset'] + x['quoteAsset']]), trading_symbols
+        ))
+        edges.extend(inverse_edges)
+        return utils.make_digraph(edges)
 
     def get_historical_candlesticks(self, interval, symbol, start=None, end=None):
         return self.service.candlesticks(symbol, interval, start=start, end=end).to_json(orient='records')

@@ -1,7 +1,9 @@
 import cv2
 import logging
 import numpy as np
-from scipy.sparse import csgraph
+import networkx as nx
+from functools import reduce
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 np.set_printoptions(edgeitems=22, precision=4, linewidth=200)
@@ -166,3 +168,35 @@ class DiGraph:
 
     def __str__(self):
         return str(self.edges)
+
+
+class DiGraphx(nx.DiGraph):
+    def __init__(self, edges, use_negative_log=False, **attr):
+        super().__init__(edges, **attr)
+        self.use_negative_log = use_negative_log
+
+    def cycle_weight(self, cycle):
+        cycle = list(cycle)
+        cycle.append(cycle[0])
+        weights = [self.get_edge_data(cycle[i], cycle[i + 1]) for i in range(len(cycle) - 1)]
+        weights = [i['weight'][2] for i in weights]
+        if self.use_negative_log:
+            weights[-1] = 1 / weights[-1]
+            cycle_weight = sum(weights)
+        else:
+            weights[-1] = -weights[-1]
+            cycle_weight = reduce(lambda x, y: x * y, weights)
+        print(weights)
+        return cycle_weight
+
+
+def make_digraph(edges, use_negative_log=False):
+    # print(edges)
+    edges = [[edge[0], edge[1], {'weight': -np.log(edge[2]) if use_negative_log else edges[2]}] for edge in edges]
+    graph = DiGraphx(edges, use_negative_log)
+    return graph
+
+
+def negative_cycles(graph):
+    cycles = nx.algorithms.find_cycle(graph)
+    cycle_weights = [graph.cycle_weight(cycle) for cycle in cycles]

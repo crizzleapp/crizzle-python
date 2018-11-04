@@ -5,6 +5,7 @@ import json
 import urllib
 import logging
 import hashlib
+from typing import Dict
 from ratelimit import RateLimitException
 from backoff import on_exception, expo
 from crizzle.services.base import Service
@@ -46,12 +47,14 @@ class BinanceService(Service):
 
     # region Helper methods
     @property
-    def key(self):
-        env_var_name = 'CrizzleKey_{}'.format(self.name)
-        if env_var_name in os.environ:
-            return json.loads(os.environ[env_var_name])
-        else:
+    def key(self) -> Dict[str]:
+        key = self.get_key()
+        if key is None:
             return {'key': None, 'secret': None}
+        else:
+            assert 'key' in key
+            assert 'secret' in key
+            return {'key': key['key'], 'secret': key['secret']}
 
     @property
     def api_key(self):

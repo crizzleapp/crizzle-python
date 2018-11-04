@@ -1,13 +1,33 @@
-import os
 import time
 import json
 import logging
 import requests
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from abc import ABCMeta
 from crizzle.utils import assert_in
 
+
 logger = logging.getLogger(__name__)
+
+
+class Keys:
+    KEY_MAP = defaultdict(lambda: None)
+
+    @staticmethod
+    def set(service_name, key):
+        Keys.KEY_MAP[service_name] = key
+
+    @staticmethod
+    def get(service_name):
+        """
+
+        Args:
+            service_name:
+
+        Returns:
+            dict: Key
+        """
+        return Keys.KEY_MAP[service_name]
 
 
 class Service(metaclass=ABCMeta):
@@ -27,50 +47,55 @@ class Service(metaclass=ABCMeta):
         self.default_api_version = default_api_version
         self.debug = debug
         self.default_timestamp = default_timestamp
-        self.load_key(key)
+        self._key = self.set_key(key)
         self.session = requests.Session()
         logger.debug("Initialized {} environment".format(name))
 
     # region Helper methods
+    def get_key(self):
+        if self._key is None:
+            self._key = self.set_key(None)
+        return self._key
+
     @property
     def key(self):
-        return None
+        return self.get_key()
 
     @property
     def key_loaded(self):
         return self.key is not None
 
-    def load_key(self, key) -> None:
+    def set_key(self, key=None):
         """
-        Check if key is in env variables, else load from file or dict.
+        Check if key is already loaded, else load from file or dict.
 
         Args:
             key (str/dict): File or dict to load key from
 
         Returns:
-            None
+            dict: Key dict
         """
-        # TODO: is using env variables to store keys secure?
-        env_variable_name = 'CrizzleKey_{}'.format(self.name)
         if key is None:
-            if env_variable_name not in os.environ:
-                logger.warning("API key for service '{}' not found in environment variables. "
-                               "Functionality will be limited. "
-                               "Use `svc.load_key(dict_or_filepath)` to load a key".format(self.name))
+            key = Keys.get(self.name)
+        if key is None:
+            logger.warning("API key for service '{}' not loaded. "
+                           "Functionality will be limited.".format(self.name))
         else:
             if isinstance(key, str):  # assume key is a file path (str)
                 try:
                     with open(key) as file:
-                        os.environ[env_variable_name] = file.read()
+                        key = json.load(file)
                 except FileNotFoundError:
-                    logger.error(
-                        "Could not find file at {}. When running on a remote machine, this is not an error.".format(
-                            key))
+                    logger.error("Could not find file at {}.".format(key))
             elif isinstance(key, dict):  # assume key is a dict
                 try:
-                    os.environ[env_variable_name] = json.dumps(key)
-                except json.JSONDecodeError:
+                    json.dumps(key)  # JSON integrity check
+                except TypeError:
                     logger.error('Could not parse contents of key dict.')
+            else:
+                raise ValueError("Unrecognised key type {}".format(type(key)))
+            Keys.set(self.name, key)
+        return key
 
     @property
     def timestamp(self) -> int:
