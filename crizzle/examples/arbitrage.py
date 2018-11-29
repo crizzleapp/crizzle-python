@@ -7,7 +7,7 @@ import numpy as np
 logging.basicConfig(format='%(asctime)s -- %(levelname)s: %(message)s', handlers=[logging.StreamHandler()],
                     level=logging.DEBUG)
 
-crizzle.set_data_directory('G:/Documents/CrizzleData')
+crizzle.set_crizzle_dir('G:/Documents/CrizzleData')
 env = crizzle.get_feed('binance')
 LOWER_LIMIT = 21
 UPPER_LIMIT = 55

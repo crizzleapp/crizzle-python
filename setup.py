@@ -11,7 +11,15 @@ setup(
         'bokeh',
         'requests',
         'backoff',
-        'nose', 'ratelimit', 'scipy', 'opencv-python', 'networkx'
+        'nose',
+        'ratelimit',
+        'scipy',
+        'opencv-python',
+        'networkx',
+        'ZODB',
+        'BTrees',
+        'persistent',
+        'tqdm'
     ],
     author="Krishna Penukonda"
 )

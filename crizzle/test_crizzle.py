@@ -1,3 +1,3 @@
 import os
 import shutil
-from . import set_data_directory
+from crizzle import set_crizzle_dir

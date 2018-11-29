@@ -1,12 +1,12 @@
 import os
 import time
 import hmac
+import random
 import json
 import urllib
 import logging
 import hashlib
-from typing import Dict
-from ratelimit import RateLimitException
+from ratelimit import RateLimitException, limits, sleep_and_retry
 from backoff import on_exception, expo
 from crizzle.services.base import Service
 from crizzle.services.binance.rate_limiter import RateLimiter
@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class Constants:
+    TIME_MULTIPLIER = 1000
     INTERVAL_1MINUTE = '1m'
     INTERVAL_3MINUTE = '3m'
     INTERVAL_5MINUTE = '5m'
@@ -30,7 +31,18 @@ class Constants:
     INTERVAL_1DAY = '1d'
     INTERVAL_1WEEK = '1w'
     INTERVAL_1MONTH = '1M'
-    INTERVALS = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '1w', '1M']
+    INTERVALS = [INTERVAL_1MINUTE, INTERVAL_3MINUTE, INTERVAL_5MINUTE, INTERVAL_15MINUTE,
+                 INTERVAL_30MINUTE, INTERVAL_1HOUR, INTERVAL_2HOUR, INTERVAL_4HOUR,
+                 INTERVAL_6HOUR, INTERVAL_8HOUR, INTERVAL_12HOUR, INTERVAL_1DAY,
+                 INTERVAL_1WEEK, INTERVAL_1MONTH
+                 ]
+    INTERVAL_SUFFIX_MAP = {'m': 60, 'h': 3600, 'd': 24 * 3600, 'w': 7 * 24 * 3600, 'M': 30 * 24 * 3600}
+
+    @staticmethod
+    def interval_value(interval):
+        suffix = interval[-1]
+        interval = int(interval[:-1])
+        return interval * Constants.INTERVAL_SUFFIX_MAP[suffix] * Constants.TIME_MULTIPLIER
 
 
 class BinanceService(Service):
@@ -42,13 +54,14 @@ class BinanceService(Service):
                                              debug=debug,
                                              default_timestamp=default_timestamp,
                                              key=key)
+        self.rate_limited = False
         self.default_api_version = 'v1'
         self.recv_window = recv_window
 
     # region Helper methods
     @property
-    def key(self) -> Dict[str]:
-        key = self.get_key()
+    def key(self):
+        key = self._get_key()
         if key is None:
             return {'key': None, 'secret': None}
         else:
@@ -66,14 +79,14 @@ class BinanceService(Service):
 
     @property
     def key_loaded(self):
-        return self.api_key and self.secret_key
+        return self.api_key is not None and self.secret_key is not None
 
     @property
     def timestamp(self) -> int:
         if self.debug:
             return self.default_timestamp
         else:
-            return int(1000 * (time.time() - 1))
+            return super(BinanceService, self).timestamp
 
     def get_default_params(self, **kwargs):
         assert 'sign' in kwargs
@@ -115,19 +128,26 @@ class BinanceService(Service):
         signature = hmac.new(bytes(self.secret_key, 'utf-8'), encoded, digestmod=hashlib.sha256)
         params['signature'] = signature.hexdigest()
         return {'params': params, 'data': data, 'headers': headers}
-
     # endregion
 
-    @on_exception(expo, RateLimitException, factor=5)
+    @sleep_and_retry
+    @limits(calls=75, period=5)
     def request(self, request_type: str, endpoint: str, params=None, api_version=None, data=None, headers=None,
                 sign=False, add_api_key=True):
+        if self.rate_limited:
+            raise RateLimitException('Binance rate limit reached.', 60)
         response = super(BinanceService, self).request(request_type, endpoint, params=params, api_version=api_version,
                                                        data=data, headers=headers, sign=sign, add_api_key=add_api_key)
         if not self.debug:
             if response.status_code in {429, 418}:
-                logger.warning("Binance rate limit reached.")
+                self.rate_limited = True
+                logger.critical("Binance rate limit reached.")
                 raise RateLimitException('Binance rate limit reached.', 60)
-
+            if response.status_code == 403:
+                self.rate_limited = True
+                logger.critical("Binance API has blocked this client.")
+                raise RateLimitException('Binance has blocked this client. Pausing all activity for 5 minutes.', 300)
+        self.rate_limited = False
         return response
 
     # region General Endpoints
@@ -144,6 +164,12 @@ class BinanceService(Service):
         return self.get("exchangeInfo", add_api_key=False)
 
     def trading_assets(self):
+        """
+        Get the set of all trading
+
+        Returns:
+
+        """
         info = self.info()
         if self.debug:
             return info
@@ -151,10 +177,11 @@ class BinanceService(Service):
             symbols = info.json()['symbols']
             assets = set()
             for symbol in symbols:
-                base = symbol['baseAsset']
-                quote = symbol['quoteAsset']
-                assets.add(base)
-                assets.add(quote)
+                if symbol['status'] == 'TRADING':
+                    base = symbol['baseAsset']
+                    quote = symbol['quoteAsset']
+                    assets.add(base)
+                    assets.add(quote)
             return assets
 
     def trading_symbols(self):
@@ -171,7 +198,8 @@ class BinanceService(Service):
         else:
             symbol_info = info.json()['symbols']
             for symbol in symbol_info:
-                symbols.append(symbol['symbol'])
+                if symbol['status'] == 'TRADING':
+                    symbols.append(symbol['symbol'])
             return symbols
 
     # endregion
@@ -210,6 +238,10 @@ class BinanceService(Service):
 
     def aggregated_trades(self, symbol: str, from_id: int = None, start: int = None, end: int = None,
                           limit: int = None):
+        if start is not None and len(str(abs(start))) < 13:
+            start = self.time_multiplier * start
+        if end is not None and len(str(abs(end))) < 13:
+            end = self.time_multiplier * end
         params = {'symbol': symbol}
         if from_id is not None:
             params['fromId'] = from_id
@@ -223,6 +255,10 @@ class BinanceService(Service):
         return response
 
     def candlesticks(self, symbol: str, interval: str, limit=None, start=None, end=None):
+        if start is not None and len(str(abs(start))) < 13:
+            start = self.time_multiplier * start
+        if end is not None and len(str(abs(end))) < 13:
+            end = self.time_multiplier * end
         params = {"symbol": symbol, "interval": interval}
         if start is not None:
             params.update({"startTime": start})
@@ -270,7 +306,7 @@ class BinanceService(Service):
         if time_in_force is not None:
             time_in_force = time_in_force.upper()
         if price is not None:
-            price = utils.conversion.float_to_str(price)
+            price = utils.misc.float_to_str(price)
 
         if order_type == 'LIMIT':
             utils.assert_none(stop_price, 'stop_price')

@@ -1,36 +1,129 @@
-import os
-import time
-import json
+import re
 import logging
+from contextlib import contextmanager
 from crizzle import utils
+from crizzle.utils import database
 from crizzle.feeds.base import Feed
+from concurrent.futures import as_completed
+from collections import OrderedDict
+from tqdm import tqdm
+import time
 
 logger = logging.getLogger(__name__)
 
+MAX_CANDLES_PER_REQUEST = 1000
+
 
 class BinanceFeed(Feed):
-    name = 'binance'
-
-    def __init__(self, symbols: list = None, intervals: list = None):
-        super(BinanceFeed, self).__init__()
+    def __init__(self, symbols: list = None, name: str = None):
+        super(BinanceFeed, self).__init__('binance', name=name)
         self.symbols = symbols or self.service.trading_symbols()
-        self.intervals = intervals or self.constants.INTERVALS
-        self.initialize_cache()
+        self.intervals = self.constants.INTERVALS
+        self.initialise_db()
 
-    def initialize_cache(self):
-        super(BinanceFeed, self).initialize_cache()
+    @contextmanager
+    def connection(self):
+        with self.db.transaction() as conn:
+            yield conn
+            conn.close()
 
-    def get_path(self, data_type: str) -> str:
-        """
-        Get the path to the file where data is stored
+    def initialise_db(self):
+        with self.db.transaction() as conn:
+            if 'candlestick_collection' not in conn.root():
+                candlestick_collection = database.CandlestickCollection()
+                conn.root.candlestick_collection = candlestick_collection
+            candlestick_collection = conn.root.candlestick_collection
+            for interval in self.intervals:
+                for symbol in self.symbols:
+                    if (interval, symbol) not in candlestick_collection:
+                        candlestick_collection[interval, symbol] = utils.database.Candlesticks()
+                    elif not isinstance(candlestick_collection[interval, symbol], utils.database.Candlesticks):
+                        candlestick_collection[interval, symbol] = utils.database.Candlesticks()
 
-        Returns:
-            str: Name of file
-        """
-        return os.path.join(self.data_directory, data_type)
+    def _get_symbols(self, symbol_patterns=None):
+        if symbol_patterns is None:
+            return self.symbols
+        symbols = set()
+        for symbol_pattern in symbol_patterns:
+            pattern = re.compile(symbol_pattern)
+            symbols.update(filter(pattern.match, self.symbols))
+        return list(symbols)
 
-    def download_candlesticks(self):
-        pass
+    def _fetch_candlesticks(self, inter, sym, start):
+        incoming = self.service.candlesticks(sym, inter, start=start, limit=MAX_CANDLES_PER_REQUEST).json()
+        new_candlesticks = {i[0]: utils.database.Candlestick(
+            i[0],
+            *i[1:5],
+            volume=i[5],
+            quote_volume=i[7],
+            close_timestamp=i[6]
+        ) for i in incoming}
+        return new_candlesticks, inter, sym
+
+    def _get_update_timestamps(self, intervals=None, symbols=None):
+        symbols = self._get_symbols(symbols)
+        intervals = intervals or self.intervals
+
+        def get_first_timestamp(inter, sym):
+            result = self.service.candlesticks(sym, inter, limit=1, start=0)
+            return result.json()[0][0]
+
+        symbols = symbols or self.symbols
+        with self.db.transaction() as conn:
+            start_timestamps = OrderedDict()
+            empty = []
+            for interval in reversed(sorted(intervals)):
+                for symbol in symbols:
+                    candlesticks = conn.root.candlestick_collection[interval, symbol]
+                    latest = candlesticks.most_recent()
+                    inter_time = self.constants.interval_value(interval)
+                    if (self.time - latest) > inter_time:  # requires update
+                        if latest == 0:
+                            empty.append((interval, symbol))
+                        else:
+                            start_timestamps[(interval, symbol)] = latest
+            with self._threads() as tpe:
+                first_timestamps = OrderedDict()
+                for interval, symbol in empty:
+                    first_timestamps[tpe.submit(get_first_timestamp, interval, symbol)] = (interval, symbol)
+                if first_timestamps:
+                    with tqdm(total=len(first_timestamps), unit='requests', ncols=100, desc="Initial timestamps") as pbar:
+                        for future in as_completed(first_timestamps):
+                            start_timestamps[first_timestamps[future]] = future.result()
+                            pbar.update(1)
+                tpe.shutdown(wait=True)
+        jobs = []
+        for (interval, symbol), start in start_timestamps.items():
+            for timestamp in range(start,
+                                   int(round(self.time)),
+                                   self.constants.interval_value(interval) * MAX_CANDLES_PER_REQUEST):
+                jobs.append((interval, symbol, timestamp))
+        return jobs
+
+    def download_candlesticks(self, intervals=None, min_interval_seconds=900, symbols=None):
+        symbols = self._get_symbols(symbols)
+        if intervals is None:
+            intervals = [i for i in self.intervals if self.constants.interval_value(i) > min_interval_seconds]
+
+        timestamps = self._get_update_timestamps(intervals=intervals, symbols=symbols)
+        # print(timestamps)
+        with self.db.transaction() as connection:
+            with self._threads() as executor:
+                futures_to_params = [(executor.submit(self._fetch_candlesticks, interval, symbol,
+                                                      start), interval, symbol, start) for
+                                     interval, symbol, start in timestamps]
+                if timestamps:
+                    with tqdm(total=len(timestamps), unit='saves', ncols=150, desc="Downloading Candlesticks") as pbar:
+                        for future, interval, symbol, start in futures_to_params:
+                            while future.running():
+                                pass
+                            new_candlesticks, interval, symbol = future.result()
+                            candlesticks = connection.root.candlestick_collection[interval, symbol]
+                            candlesticks.update(new_candlesticks)
+                            pbar.update(1)
+                            pbar.set_postfix(interval=interval, symbol=symbol, refresh=True)
+                            connection.transaction_manager.commit()
+            executor.shutdown(wait=True)
 
     def download_historical_trades(self):
         pass
@@ -43,35 +136,6 @@ class BinanceFeed(Feed):
 
     def download_my_trades(self):
         pass
-
-    def most_recent(self) -> dict:
-        """
-        Checks local data directory for file existence and most recent data point for each chart
-
-        Returns:
-            dict: Dictionary of the format {interval: {symbol: latest_time}}, where latest_time is the
-            timestamp of the most recent entry available, or None if there are no records for that symbol.
-        """
-        output = {}
-        with open(self.get_path('candlestick')) as file:
-            data = json.load(file)
-            for interval in self.intervals:
-                if interval not in output:
-                    output[interval] = {}
-                for symbol in self.symbols:  # TODO: fix this ugly nesting
-                    if interval in data:
-                        if symbol in data[interval]:
-                            if len(data[interval][symbol]) > 0:
-                                latest = \
-                                    sorted(data[interval][symbol], key=lambda x: x['closeTimestamp'], reverse=True)[0]
-                                output[interval].update({symbol: (latest['openTimestamp'], latest['closeTimestamp'])})
-                            else:
-                                output[interval][symbol] = (0, 0)
-                        else:
-                            output[interval][symbol] = (0, 0)
-                    else:
-                        output[interval][symbol] = (0, 0)
-        return output
 
     def current_price_graph(self, assets=None):
         assets = set(assets)
@@ -98,29 +162,3 @@ class BinanceFeed(Feed):
 
     def current_price(self, symbol=None):
         return self.service.ticker_price(symbol=symbol)
-
-    def update_cache(self):
-        """
-        Brings locally stored historical data for all chosen symbols up to date.
-        """
-        latest_timestamps = self.most_recent()
-        path = self.historical_filepath
-        with open(path, 'r') as file:
-            data = json.load(file)
-            for interval in self.intervals:
-                if interval not in data:
-                    data[interval] = {}
-                for symbol in self.symbols:
-                    if symbol not in data[interval]:
-                        data[interval][symbol] = []
-                    candlesticks = data[interval][symbol]
-                    open_time, close_time = latest_timestamps[interval][symbol]
-                    while (time.time() * 1000) - close_time > close_time - open_time:
-                        # TODO: verify out of date using a better method
-                        new_candlesticks = self.service.candlesticks(symbol, interval, start=close_time)
-                        open_time = new_candlesticks[-1]['openTimestamp']
-                        close_time = new_candlesticks[-1]['closeTimestamp']
-                        candlesticks.extend(new_candlesticks)
-                        logger.debug("Interval {}; Symbol {}; Close Time {}".format(interval, symbol, close_time))
-        with open(path, 'w') as file:
-            json.dump(data, file, indent=2)

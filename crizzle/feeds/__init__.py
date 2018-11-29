@@ -1,12 +1,9 @@
 import os
+from crizzle.utils import CrizzleDirectories
 from crizzle.feeds import binance, base
 
 ENVIRONMENT_MAP = {'binance': binance}
 ENVIRONMENTS = list(ENVIRONMENT_MAP.keys())
-
-
-def get_data_dir():
-    return os.environ['CrizzleData']
 
 
 def get(name: str, *args, **kwargs):

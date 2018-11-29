@@ -1,10 +1,12 @@
+import logging
 import crizzle
 
-svc = crizzle.services.binance.BinanceService(debug=True, name='binancetest')
-crizzle.set_service_key('binancetest', {
-    "key": "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
-    "secret": "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j"
-})
+logging.basicConfig(format='%(asctime)s -- %(levelname)s: %(message)s', handlers=[logging.StreamHandler()],
+                    level=logging.DEBUG)
 
-print(crizzle.get_service_key('binancetest'))
-print(svc.key)
+crizzle.set_crizzle_dir('G:/Documents/CrizzleData')
+crizzle.set_key('binance', "G:/Documents/CrizzleData/keys/binance_test.json")
+feed = crizzle.get_feed('binance')
+# print(feed._match_symbols(['ETH.*', 'EOS.*', 'TRX.*', 'BTC.*']))
+feed.download_candlesticks(min_interval_seconds=300000, symbols=['EOSETH'])
+# print(feed.get_update_timestamps(min_interval_seconds=30000))

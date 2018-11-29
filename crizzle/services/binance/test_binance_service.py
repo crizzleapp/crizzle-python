@@ -6,8 +6,8 @@ from crizzle.services.binance import BinanceService
 default_timestamp = 1499827319559
 unsigned_svc = BinanceService(debug=True, name='binanceunsigned', default_timestamp=default_timestamp)
 svc = BinanceService(debug=True, name='binancetest', default_timestamp=default_timestamp)
-crizzle.set_service_key('binancetest',
-                        {
+crizzle.set_key('binancetest',
+                {
                             "key": "vmPUZE6mv9SD5VNHk4HlWFsOr6aKE2zvsw0MuIgwCIPy6utIco14y7Ju91duEh8A",
                             "secret": "NhqPtmdSJYdKjVHjA7PZj4Mge3R5YNiP1e3UZjInClVN65XAbvqqM6A7H5fATj0j"
                         })

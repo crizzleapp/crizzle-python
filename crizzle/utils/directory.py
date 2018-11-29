@@ -2,7 +2,7 @@ import os
 import json
 
 
-class Directory():
+class Directory:
     def __init__(self, name=None, source=None):
         self.name = name
         self.subdirectories = dict()

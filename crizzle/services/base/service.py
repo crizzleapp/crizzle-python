@@ -3,15 +3,22 @@ import json
 import logging
 import requests
 from collections import OrderedDict, defaultdict
+from ratelimit import RateLimitException
 from abc import ABCMeta
 from crizzle.utils import assert_in
-
 
 logger = logging.getLogger(__name__)
 
 
+# logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
 class Keys:
     KEY_MAP = defaultdict(lambda: None)
+
+    @staticmethod
+    def loaded_keys():
+        return set(Keys.KEY_MAP.keys())
 
     @staticmethod
     def set(service_name, key):
@@ -30,7 +37,13 @@ class Keys:
         return Keys.KEY_MAP[service_name]
 
 
+class Constants:
+    TIME_MULTIPLIER = 1
+
+
 class Service(metaclass=ABCMeta):
+    constants = Constants
+
     def __init__(self, name: str, root: str, key=None, default_api_version=None,
                  debug=False, default_timestamp=None):
         """
@@ -46,20 +59,27 @@ class Service(metaclass=ABCMeta):
         self.root = root
         self.default_api_version = default_api_version
         self.debug = debug
+        self.time_multiplier = self.constants.TIME_MULTIPLIER
         self.default_timestamp = default_timestamp
         self._key = self.set_key(key)
-        self.session = requests.Session()
+        self.session = self.setup_session()
         logger.debug("Initialized {} environment".format(name))
 
+    def setup_session(self):
+        session = requests.Session()
+        session.mount('https://', requests.adapters.HTTPAdapter(pool_maxsize=32, pool_block=True))
+        self.session = session
+        return session
+
     # region Helper methods
-    def get_key(self):
+    def _get_key(self):
         if self._key is None:
             self._key = self.set_key(None)
         return self._key
 
     @property
     def key(self):
-        return self.get_key()
+        return self._get_key()
 
     @property
     def key_loaded(self):
@@ -105,7 +125,7 @@ class Service(metaclass=ABCMeta):
         Returns:
             int: millisecond UNIX timestamp
         """
-        return int(1000 * (time.time()))
+        return int(self.time_multiplier * (time.time()))
 
     @property
     def nonce(self):
@@ -115,7 +135,7 @@ class Service(metaclass=ABCMeta):
         Returns:
             int: millisecond timestamp (by default)
         """
-        return int(time.time() * 1000)
+        return self.timestamp
 
     def get_default_params(self, **kwargs) -> dict:
         """
@@ -241,33 +261,35 @@ class Service(metaclass=ABCMeta):
         final_params = self.sort_dict(final_params)
         data = self.sort_dict(data)
 
-        with self.session as session:
-            try:
-                assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
-            except ValueError:
-                logger.exception('invalid request type {}'.format(request_type))
-                raise
+        try:
+            assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
+        except ValueError:
+            logger.exception('invalid request type {}'.format(request_type))
+            raise
+        else:
+            if sign:
+                self.sign_request_data(params=final_params, data=data, headers=headers)
+            if add_api_key:
+                self.add_api_key(params=final_params, data=data, headers=headers)
+            request = requests.Request(request_type.upper(), self.root + "/{}/".format(api_version) + endpoint,
+                                       params=final_params, data=data, headers=headers)
+            prepped = request.prepare()
+            if self.debug:
+                return prepped
             else:
-                if sign:
-                    self.sign_request_data(params=final_params, data=data, headers=headers)
-                if add_api_key:
-                    self.add_api_key(params=final_params, data=data, headers=headers)
-                request = requests.Request(request_type.upper(), self.root + "/{}/".format(api_version) + endpoint,
-                                           params=final_params, data=data, headers=headers)
-                prepped = request.prepare()
-                if self.debug:
-                    return prepped
-                else:
-                    response = session.send(prepped)
-                    try:
-                        response.raise_for_status()
-                    except requests.HTTPError as e:
+                response = self.session.send(prepped)
+                try:
+                    response.raise_for_status()
+                except requests.HTTPError as e:
+                    if response.status_code != 429:
                         logger.exception(
-                            "Error while querying endpoint '{}' of service '{}': '{}'".format(endpoint, self.name,
-                                                                                              response.text))
-                    finally:
-                        logger.debug('Queried {} at {}'.format(self.name, response.url))
-                        return response
+                            "Error {} while querying endpoint '{}' of service '{}': '{}'".format(endpoint,
+                                                                                                 response.status_code,
+                                                                                                 self.name,
+                                                                                                 response.text))
+                finally:
+                    logger.debug('Queried {} at {}'.format(self.name, response.url))
+                    return response
 
     def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False, add_api_key=True):
         return self.request('get', endpoint, params=params, api_version=api_version, data=data, headers=headers,

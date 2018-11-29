@@ -1,6 +1,6 @@
 from crizzle.services import base
 from crizzle.services import binance
-from crizzle.utils import memoize
+from crizzle.utils.patterns import memoize
 
 
 SERVICE_MAP = {'binance': binance,
@@ -11,6 +11,7 @@ SERVICES = list(SERVICE_MAP.keys())
 KEYS = base.Keys
 set_key = KEYS.set
 get_key = KEYS.get
+loaded_keys = KEYS.loaded_keys
 
 
 @memoize
@@ -22,4 +23,3 @@ def get(service_name: str, *args, **kwargs):
     module = SERVICE_MAP[service_name]
     if module is not None:
         return module.Service(*args, **kwargs)
-
