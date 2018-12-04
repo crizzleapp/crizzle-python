@@ -1,5 +1,4 @@
 import os
-from crizzle.utils import CrizzleDirectories
 from crizzle.feeds import binance, base
 
 ENVIRONMENT_MAP = {'binance': binance}

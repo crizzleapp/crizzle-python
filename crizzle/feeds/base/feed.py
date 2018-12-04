@@ -1,14 +1,9 @@
 import os
-import logging
 import ZODB as db
 import atexit
 from concurrent.futures import ThreadPoolExecutor
-from abc import abstractmethod
+import crizzle
 from crizzle import services, utils
-
-logger = logging.getLogger(__name__)
-logging.getLogger("ZODB").setLevel(logging.WARNING)
-logging.getLogger("txn").setLevel(logging.WARNING)
 
 
 class Feed:
@@ -17,10 +12,11 @@ class Feed:
     def __init__(self, service_name, name=None):
         self.name = name or utils.misc.random_string()
         self.service_name = service_name
+        self.logger = utils.log.get_logger('feed_{} ({})'.format(self.service_name, self.name))
         self.constants = self.service.constants
         self.time_multiplier = self.service.time_multiplier
         self.db = self.connect_database()
-        logger.debug("Initialised new feed '{}' with service '{}'.".format(self.name, self.service_name))
+        self.logger.debug("Initialised feed with service '{}' ({}).".format(self.service_name, self.name))
         atexit.register(self.close)
 
     @property
@@ -35,7 +31,7 @@ class Feed:
 
     @property
     def database_path(self):
-        return os.path.join(utils.CrizzleDirectories.get_data_directory(), self.service_name + '.db')
+        return os.path.join(crizzle.get_data_dir(), self.service_name + '.db')
 
     @property
     def service(self):
@@ -45,7 +41,7 @@ class Feed:
         """
         Creates database file in the local data directory if it doesn't already exist.
         """
-        logger.debug("Connecting to database '{}'...".format(self.database_path))
+        self.logger.debug("Connecting to database '{}'...".format(self.database_path))
         database = db.DB(self.database_path,
                          pool_size=16,
                          database_name=self.name,
@@ -54,6 +50,6 @@ class Feed:
         return database
 
     def reload_database(self):
-        logger.debug("Reloading database '{}'...".format(self.database_path))
+        self.logger.debug("Reloading database '{}'...".format(self.database_path))
         self.db.close()
         self.db = self.connect_database()

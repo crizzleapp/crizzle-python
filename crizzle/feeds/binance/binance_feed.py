@@ -7,9 +7,6 @@ from crizzle.feeds.base import Feed
 from concurrent.futures import as_completed
 from collections import OrderedDict
 from tqdm import tqdm
-import time
-
-logger = logging.getLogger(__name__)
 
 MAX_CANDLES_PER_REQUEST = 1000
 
@@ -87,7 +84,8 @@ class BinanceFeed(Feed):
                 for interval, symbol in empty:
                     first_timestamps[tpe.submit(get_first_timestamp, interval, symbol)] = (interval, symbol)
                 if first_timestamps:
-                    with tqdm(total=len(first_timestamps), unit='requests', ncols=100, desc="Initial timestamps") as pbar:
+                    with tqdm(total=len(first_timestamps), unit='requests', ncols=100,
+                              desc="Initial timestamps") as pbar:
                         for future in as_completed(first_timestamps):
                             start_timestamps[first_timestamps[future]] = future.result()
                             pbar.update(1)
@@ -103,7 +101,8 @@ class BinanceFeed(Feed):
     def download_candlesticks(self, intervals=None, min_interval_seconds=900, symbols=None):
         symbols = self._get_symbols(symbols)
         if intervals is None:
-            intervals = [i for i in self.intervals if self.constants.interval_value(i) > min_interval_seconds]
+            intervals = [i for i in self.intervals if
+                         self.constants.interval_value(i) > min_interval_seconds * self.time_multiplier]
 
         timestamps = self._get_update_timestamps(intervals=intervals, symbols=symbols)
         # print(timestamps)

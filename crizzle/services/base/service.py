@@ -1,16 +1,10 @@
 import time
 import json
-import logging
 import requests
 from collections import OrderedDict, defaultdict
-from ratelimit import RateLimitException
 from abc import ABCMeta
 from crizzle.utils import assert_in
-
-logger = logging.getLogger(__name__)
-
-
-# logging.getLogger("urllib3").setLevel(logging.WARNING)
+from crizzle import utils
 
 
 class Keys:
@@ -55,6 +49,7 @@ class Service(metaclass=ABCMeta):
             default_api_version:
             debug:
         """
+        self.logger = utils.log.get_logger('service_{}'.format(name))
         self.name = name
         self.root = root
         self.default_api_version = default_api_version
@@ -63,7 +58,7 @@ class Service(metaclass=ABCMeta):
         self.default_timestamp = default_timestamp
         self._key = self.set_key(key)
         self.session = self.setup_session()
-        logger.debug("Initialized {} environment".format(name))
+        self.logger.debug("Initialized {} environment".format(name))
 
     def setup_session(self):
         session = requests.Session()
@@ -98,7 +93,7 @@ class Service(metaclass=ABCMeta):
         if key is None:
             key = Keys.get(self.name)
         if key is None:
-            logger.warning("API key for service '{}' not loaded. "
+            self.logger.warning("API key for service '{}' not loaded. "
                            "Functionality will be limited.".format(self.name))
         else:
             if isinstance(key, str):  # assume key is a file path (str)
@@ -106,12 +101,12 @@ class Service(metaclass=ABCMeta):
                     with open(key) as file:
                         key = json.load(file)
                 except FileNotFoundError:
-                    logger.error("Could not find file at {}.".format(key))
+                    self.logger.error("Could not find file at {}.".format(key))
             elif isinstance(key, dict):  # assume key is a dict
                 try:
                     json.dumps(key)  # JSON integrity check
                 except TypeError:
-                    logger.error('Could not parse contents of key dict.')
+                    self.logger.error('Could not parse contents of key dict.')
             else:
                 raise ValueError("Unrecognised key type {}".format(type(key)))
             Keys.set(self.name, key)
@@ -264,7 +259,7 @@ class Service(metaclass=ABCMeta):
         try:
             assert_in(request_type, 'request_type', ('get', 'post', 'put', 'delete'))
         except ValueError:
-            logger.exception('invalid request type {}'.format(request_type))
+            self.logger.exception('invalid request type {}'.format(request_type))
             raise
         else:
             if sign:
@@ -282,13 +277,13 @@ class Service(metaclass=ABCMeta):
                     response.raise_for_status()
                 except requests.HTTPError as e:
                     if response.status_code != 429:
-                        logger.exception(
+                        self.logger.exception(
                             "Error {} while querying endpoint '{}' of service '{}': '{}'".format(endpoint,
                                                                                                  response.status_code,
                                                                                                  self.name,
                                                                                                  response.text))
                 finally:
-                    logger.debug('Queried {} at {}'.format(self.name, response.url))
+                    self.logger.debug('Queried {} at {}'.format(self.name, response.url))
                     return response
 
     def get(self, endpoint: str, params=None, api_version=None, data=None, headers=None, sign=False, add_api_key=True):

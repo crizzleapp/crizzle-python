@@ -1,18 +1,11 @@
-import os
-import time
 import hmac
-import random
-import json
 import urllib
-import logging
 import hashlib
 from ratelimit import RateLimitException, limits, sleep_and_retry
 from backoff import on_exception, expo
 from crizzle.services.base import Service
 from crizzle.services.binance.rate_limiter import RateLimiter
 from crizzle import utils
-
-logger = logging.getLogger(__name__)
 
 
 class Constants:
@@ -141,11 +134,11 @@ class BinanceService(Service):
         if not self.debug:
             if response.status_code in {429, 418}:
                 self.rate_limited = True
-                logger.critical("Binance rate limit reached.")
+                self.logger.critical("Binance rate limit reached.")
                 raise RateLimitException('Binance rate limit reached.', 60)
             if response.status_code == 403:
                 self.rate_limited = True
-                logger.critical("Binance API has blocked this client.")
+                self.logger.critical("Binance API has blocked this client.")
                 raise RateLimitException('Binance has blocked this client. Pausing all activity for 5 minutes.', 300)
         self.rate_limited = False
         return response
