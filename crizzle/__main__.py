@@ -1,20 +1,28 @@
+#! python
+import asyncio
 import argparse
+import logging
+
+logger = logging.getLogger('Crizzle')
+logging.basicConfig(level=logging.INFO)
 
 
-def record(args):
+async def record(args):
+    while True:
+        pass
+
+
+async def test(args):
     pass
 
 
-def test(args):
-    pass
-
-
-def live(args):
+async def live(args):
     pass
 
 
 parser = argparse.ArgumentParser('Crizzle')
-subparsers = parser.add_subparsers(dest='mode')
+parser.add_argument('--logdir', default='../logs')
+subparsers = parser.add_subparsers(dest='mode', required=True)
 
 # Data Recording-Only mode
 record_parser = subparsers.add_parser('record')
@@ -31,9 +39,10 @@ live_parser.set_defaults(func=live)
 arguments = parser.parse_args()
 
 
-def main(args):
-    return args.func(args)
+async def main(args):
+    return await args.func(args)
 
 
 if __name__ == '__main__':
-    main(arguments)
+    logger.info(f"Running Crizzle in mode {arguments.mode}")
+    asyncio.run(main(arguments))
