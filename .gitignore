@@ -63,3 +63,5 @@ data/
 # API keys
 *.key
 *.apikey
+
+logs/
