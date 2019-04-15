@@ -1,43 +1,45 @@
-import os
-from datetime import datetime
 import asyncio
 import logging
 import dataclasses
-from .runner import RunMode
+from . import runners
+from . import receivers
+from . import signals
+
+logger = logging.getLogger('Crizzle')
 
 
 @dataclasses.dataclass
 class AppConfig:
     name: str = 'Crizzle'
-    runner: RunMode = RunMode.RECORD
+    runner: runners.RunMode = runners.RunMode.RECORD
     logdir: str = '../logs'
 
 
 class Application:
+    """
+    Top-level object.
+    """
+
     def __init__(self, config: AppConfig):
         self.config = config
         self.name = self.config.name
         self.runner = self.config.runner.value(self.config)
-        self.mode = RunMode(self.config.runner).name
+        self.mode = runners.RunMode(self.config.runner).name
+        self.setup()
 
-    def setup_logging(self):
-        root_logger = logging.getLogger('Crizzle')
-        root_logger.setLevel(logging.DEBUG)
-        logdir = self.config.logdir
-        os.makedirs(logdir, exist_ok=True)
-        log_file = os.path.join(logdir, f"log_{datetime.now().strftime('%Y%m%d_%H-%M-%S')}.txt")
-        formatter = logging.Formatter("[%(asctime)s] [%(name)32s] [%(levelname)8s] -- %(message)s", '%Y-%m-%d %H:%M:%S')
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.DEBUG)
-        stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter)
-        stream_handler.setFormatter(formatter)
-        root_logger.addHandler(stream_handler)
-        root_logger.addHandler(file_handler)
-        return root_logger
+    def setup(self):
+        """
+        Perform pre-run setup.
+
+        Returns: None
+        """
+        signals.ready.send(self.__class__, instance=self)
 
     def run(self):
-        logger = self.setup_logging()
-        logger.info(f"Starting App '{self.name}' in mode {self.mode}")
+        """
+        Run app.
+
+        Returns: None
+        """
+        signals.pre_run.send(self.__class__, instance=self)
         asyncio.run(self.runner())
