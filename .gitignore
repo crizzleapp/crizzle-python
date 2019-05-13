@@ -59,10 +59,5 @@ target/
 # Crizzle stuff
 data/
 *.log
-
-# API keys
 *.key
 *.apikey
-
-# Under Development
-agent/
