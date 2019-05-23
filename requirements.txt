@@ -1,9 +1,11 @@
 backoff
 bokeh
 django
+djangorestframework
 whitenoise
 pytest-django
 dj-database-url
+django-cors-headers
 django-filter
 django-import-export
 django-model-utils
