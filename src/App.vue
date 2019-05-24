@@ -1,33 +1,35 @@
 <template>
-  <div id="app">
-    <h1>Crizzle</h1>
-    <p>
-
-    </p>
-  </div>
+    <v-app dark>
+        <v-toolbar app>
+            <v-toolbar-title class="headline text-uppercase">
+                <span class="font-weight-black">CRIZZLE</span>
+            </v-toolbar-title>
+            <v-spacer/>
+            <v-toolbar-items>
+                <v-btn flat><v-icon left dark>explore</v-icon>Data & Research</v-btn>
+                <v-btn flat><v-icon left dark>assignment</v-icon>Portfolio</v-btn>
+                <v-btn flat><v-icon left dark>assessment</v-icon>Trading</v-btn>
+                <v-btn flat><v-icon left dark>settings</v-icon>Configuration</v-btn>
+            </v-toolbar-items>
+        </v-toolbar>
+        <v-content>
+            <HelloWorld/>
+        </v-content>
+    </v-app>
 </template>
 
 <script>
-  import axios from 'axios';
+    import HelloWorld from './components/HelloWorld'
 
-  export default {
-    name: 'App',
-    data() {
-      return {}
-    },
-    mounted: function () {
-    },
-    methods: {}
-  }
+    export default {
+        name: 'App',
+        components: {
+            HelloWorld
+        },
+        data() {
+            return {
+                //
+            }
+        }
+    }
 </script>
-
-<style>
-  #app {
-    font-family: 'Roboto', Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-align: center;
-    color: #2c3e50;
-    margin-top: 30px;
-  }
-</style>
