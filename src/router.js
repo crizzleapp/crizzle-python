@@ -14,12 +14,39 @@ export default new Router({
       component: Home
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (about.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import(/* webpackChunkName: "about" */ './views/About.vue')
-    }
+      path: '/data',
+      name: 'data',
+      component: () => import('./views/Data.vue')
+    },
+    {
+      path: '/research',
+      name: 'research',
+      component: () => import('./views/Research.vue')
+    },
+    {
+      path: '/portfolio',
+      name: 'portfolio',
+      component: () => import('./views/Portfolio.vue')
+    },
+    {
+      path: '/backtesting',
+      name: 'backtesting',
+      component: () => import('./views/Backtesting.vue')
+    },
+    {
+      path: '/trading',
+      name: 'trading',
+      component: () => import('./views/Trading.vue')
+    },
+    {
+      path: '/configuration',
+      name: 'configuration',
+      component: () => import('./views/Configuration.vue')
+    },
+    {
+      path: '/docs',
+      name: 'docs',
+      component: () => import('./views/Docs.vue')
+    },
   ]
 })
