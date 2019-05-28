@@ -1,19 +1,21 @@
 <template>
-    <v-app dark class="grey darken-4">
-        <Sidebar/>
+    <v-app dark>
+        <Navigation/>
         <v-content>
-            <router-view/>
+            <v-container fluid>
+                <router-view/>
+            </v-container>
         </v-content>
     </v-app>
 </template>
 
 <script>
-    import Sidebar from "./components/sidebar";
+    import Navigation from "./components/navigation";
 
     export default {
         name: 'App',
         components: {
-            Sidebar,
+            Navigation,
         },
         data() {
             return {}
