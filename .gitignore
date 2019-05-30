@@ -1,24 +1,50 @@
-.DS_Store
-node_modules
+# Pytest
+htmlcov/
+\.coverage
+
+# Django
+*.log
+*.pot
+local_settings.py
+*.env
+staticfiles
+db.sqlite3
+media/
+assets/
+
+# frontend
 /dist
 
-# local env files
-.env.local
-.env.*.local
-
-# Log files
+# npm
+package-lock\.json
+node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # Editor directories and files
-.idea
-.vscode
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-package-lock\.json
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+develop-eggs/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+
+# Sphinx documentation
+docs/_build/
+
+# OSX
+.DS_Store
+.AppleDouble
+.LSOverride
+dump.rdb

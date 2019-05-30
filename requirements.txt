@@ -1,9 +1,9 @@
 backoff
 bokeh
+cookiecutter
 django
 djangorestframework
 whitenoise
-pytest-django
 dj-database-url
 django-cors-headers
 django-filter
@@ -23,3 +23,7 @@ ratelimit
 requests
 scipy
 tqdm
+
+codecov
+pytest
+pytest-django

@@ -1,14 +1,16 @@
-sudo: false
-
 language: python
 
+sudo: false
+
 python:
-  - 3.6
+  - "3.6"
+  - "3.7"
 
 install:
-  - pip install -U -e .
-  - pip install codecov
+  - pip install -r requirements.txt
 
 script:
-  - nosetests --nologcapture --with-coverage --cover-package=crizzle
+  - pytest
+
+after_script:
   - codecov
