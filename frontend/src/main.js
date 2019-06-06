@@ -9,8 +9,8 @@ import Vuetify from 'vuetify'
 Vue.config.productionTip = false
 Vue.use(Vuetify, {
     theme: {
-        primary: '#4CAF50',
-        accent: '#FF5722',
+        // primary: '#4CAF50',
+        // accent: '#FF5722',
     }
 })
 

@@ -18,7 +18,6 @@
                 mobile-break-point="800"
                 v-model="sidebar.open"
                 id="sidebar"
-                class="elevation-8"
         >
             <v-list subheader>
                 <div v-for="(item, i) in sidebar.navItems">
@@ -26,7 +25,6 @@
                             :key="item.title"
                             :to="item.endpoint ? item.endpoint : item.title.toLowerCase()"
                             ripple
-                            class="elevation-0"
                             active-class="highlighted"
                     >
                         <v-list-tile-action class="icon">

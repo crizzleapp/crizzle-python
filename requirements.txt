@@ -7,6 +7,7 @@ whitenoise
 dj-database-url
 django-cors-headers
 django-filter
+django-guardian
 django-import-export
 django-model-utils
 django-rq
@@ -23,7 +24,6 @@ ratelimit
 requests
 scipy
 tqdm
-
 codecov
 pytest
 pytest-django
