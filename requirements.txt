@@ -1,0 +1,5 @@
+scipy
+scikit-learn
+ccxt
+psycopg2
+sqlalchemy
