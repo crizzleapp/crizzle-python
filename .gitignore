@@ -24,6 +24,9 @@ var/
 *.egg-info/
 .installed.cfg
 
+# Virtual environment
+.venv/
+
 # PyInstaller
 *.manifest
 *.spec
