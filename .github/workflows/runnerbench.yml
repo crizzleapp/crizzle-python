@@ -1,0 +1,71 @@
+name: Runner benchmarks
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Blacksmith2:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    steps:
+      - uses: actions/checkout@v2
+      - uses: useblacksmith/setup-python@v6
+        with:
+          python-version: 3.11.8
+          cache: 'pip'
+      - name: Install library
+        run: pip install -e .
+      - name: Pull docker images
+        run: docker pull python:3.11.9-bookworm
+
+  Blacksmith4:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - uses: actions/checkout@v2
+      - uses: useblacksmith/setup-python@v6
+        with:
+          python-version: 3.11.8
+          cache: 'pip'
+      - name: Install library
+        run: pip install -e .
+      - name: Pull docker images
+        run: docker pull python:3.11.9-bookworm
+
+  GitHub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11.8
+          cache: 'pip'
+      - name: Install library
+        run: pip install -e .
+      - name: Pull docker images
+        run: docker pull python:3.11.9-bookworm
+
+  Ubicloud2:
+    runs-on: ubicloud-standard-2
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11.8
+          cache: 'pip'
+      - name: Install library
+        run: pip install -e .
+      - name: Pull docker images
+        run: docker pull python:3.11.9-bookworm
+
+  Ubicloud4:
+    runs-on: ubicloud-standard-4
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11.8
+          cache: 'pip'
+      - name: Install library
+        run: pip install -e .
+      - name: Pull docker images
+        run: docker pull python:3.11.9-bookworm
+
