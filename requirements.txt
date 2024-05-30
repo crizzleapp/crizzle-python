@@ -2,3 +2,19 @@ numpy
 pandas
 bokeh
 requests
+
+# Not required; these are for stress-testing only
+fastapi
+celery
+uvicorn
+boto3
+loguru
+jinja2
+nltk
+jinja2
+pynamodb
+nltk
+uvicorn
+gunicorn
+elasticsearch
+scrapy
